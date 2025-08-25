@@ -16,9 +16,55 @@ app.get('/api/users', async (req, res) => {
 });
 
 // Caixas
+
+// Listar caixas
 app.get('/api/caixas', async (req, res) => {
   const caixas = await prisma.caixa.findMany();
   res.json(caixas);
+});
+
+// Criar caixa
+app.post('/api/caixas', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nome do caixa é obrigatório.' });
+    // Gera uma key única
+    const key = name.toLowerCase().replace(/[^a-z0-9]/gi, '');
+    // Verifica se já existe
+    const exists = await prisma.caixa.findUnique({ where: { key } });
+    if (exists) return res.status(400).json({ error: 'Já existe um caixa com esse nome.' });
+    const caixa = await prisma.caixa.create({ data: { name, key } });
+    res.json(caixa);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Atualizar caixa
+app.put('/api/caixas/:key', async (req, res) => {
+  try {
+    const { name } = req.body;
+    const { key } = req.params;
+    if (!name) return res.status(400).json({ error: 'Nome do caixa é obrigatório.' });
+    // Verifica se existe
+    const exists = await prisma.caixa.findUnique({ where: { key } });
+    if (!exists) return res.status(404).json({ error: 'Caixa não encontrado.' });
+    const caixa = await prisma.caixa.update({ where: { key }, data: { name } });
+    res.json(caixa);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Excluir caixa
+app.delete('/api/caixas/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    await prisma.caixa.delete({ where: { key } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Transações

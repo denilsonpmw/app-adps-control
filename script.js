@@ -42,7 +42,7 @@ class ChurchFinanceApp {
         }
     }
     constructor() {
-    this.caixas = { ...CAIXAS };
+        this.caixas = { ...CAIXAS };
         this.currentUser = null;
         this.transactions = [];
         this.receipts = [];
@@ -54,6 +54,7 @@ class ChurchFinanceApp {
         };
         this.currentTheme = 'light';
         this.churchData = {
+            id: null,
             name: '',
             address: '',
             phone: '',
@@ -61,14 +62,14 @@ class ChurchFinanceApp {
             cnpj: ''
         };
         this.churchLogo = null;
-        
         this.init();
     }
 
     async init() {
-    await loadCaixas();
-    this.caixas = { ...CAIXAS };
-    this.renderCaixaList();
+        await loadCaixas();
+        this.caixas = { ...CAIXAS };
+        this.renderCaixaList();
+        await this.loadChurchData();
         await this.loadTransactions();
         await this.loadReceipts();
         this.loadTheme();
@@ -105,11 +106,38 @@ class ChurchFinanceApp {
         }
     }
 
+    // Carrega dados da igreja do backend
+    async loadChurchData() {
+        try {
+            const res = await fetch('http://localhost:3001/api/church');
+            if (!res.ok) throw new Error('Erro ao carregar dados da igreja');
+            const data = await res.json();
+            if (data) {
+                this.churchData = {
+                    id: data.id,
+                    name: data.name || '',
+                    address: data.address || '',
+                    phone: data.phone || '',
+                    email: data.email || '',
+                    cnpj: data.cnpj || '',
+                    logoUrl: data.logoUrl || null
+                };
+                this.churchLogo = data.logoUrl || null;
+                this.updateLogoPreview();
+            }
+        } catch (err) {
+            this.churchData = { id: null, name: '', address: '', phone: '', email: '', cnpj: '', logoUrl: null };
+            this.churchLogo = null;
+            this.updateLogoPreview();
+            this.showNotification('Erro ao carregar dados da igreja', 'error');
+        }
+    }
+
     saveData() {
         localStorage.setItem('churchTransactions', JSON.stringify(this.transactions));
         localStorage.setItem('churchReceipts', JSON.stringify(this.receipts));
         localStorage.setItem('churchBalances', JSON.stringify(this.balances));
-        localStorage.setItem('churchData', JSON.stringify(this.churchData));
+        // churchData agora é persistido no backend
         if (this.churchLogo) {
             localStorage.setItem('churchLogo', this.churchLogo);
         }
@@ -1070,70 +1098,117 @@ printReportsTable() {
 
     // Utilitários
     // Gerenciamento de Caixas
-    renderCaixaList() {
+    async renderCaixaList() {
         const caixaList = document.getElementById('caixaList');
-        caixaList.innerHTML = '';
-        Object.entries(this.caixas).forEach(([key, value]) => {
-            const li = document.createElement('li');
-            li.className = 'caixa-item';
-            li.innerHTML = `
-                <span>${value}</span>
-                <button class="btn-secondary" onclick="app.editCaixa('${key}')"><i class="fas fa-edit"></i></button>
-                <button class="btn-danger" onclick="app.deleteCaixa('${key}')"><i class="fas fa-trash"></i></button>
-            `;
-            caixaList.appendChild(li);
-        });
-        this.updateCaixaSelects();
+        caixaList.innerHTML = '<li>Carregando...</li>';
+        try {
+            const res = await fetch('http://localhost:3001/api/caixas');
+            const caixasArr = await res.json();
+            this.caixas = {};
+            caixaList.innerHTML = '';
+            caixasArr.forEach(caixa => {
+                this.caixas[caixa.key] = caixa.name;
+                const li = document.createElement('li');
+                li.className = 'caixa-item';
+                li.innerHTML = `
+                    <span>${caixa.name}</span>
+                    <button class="btn-secondary" onclick="app.editCaixa('${caixa.key}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn-danger" onclick="app.deleteCaixa('${caixa.key}')"><i class="fas fa-trash"></i></button>
+                `;
+                caixaList.appendChild(li);
+            });
+            this.updateCaixaSelects();
+        } catch (err) {
+            caixaList.innerHTML = '<li>Erro ao carregar caixas</li>';
+        }
     }
 
-    addCaixa() {
+    async addCaixa() {
         const caixaNameInput = document.getElementById('caixaName');
         const name = caixaNameInput.value.trim();
         if (!name) return;
-        // Gera uma chave única
-        const key = name.toLowerCase().replace(/[^a-z0-9]/gi, '');
-        if (this.caixas[key]) {
-            this.showNotification('Já existe um caixa com esse nome.', 'error');
-            return;
+        try {
+            const res = await fetch('http://localhost:3001/api/caixas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                this.showNotification(data.error || 'Erro ao incluir caixa', 'error');
+                return;
+            }
+            caixaNameInput.value = '';
+            await this.renderCaixaList();
+            this.showNotification('Caixa incluído com sucesso!', 'success');
+        } catch (err) {
+            this.showNotification('Erro ao incluir caixa', 'error');
         }
-        this.caixas[key] = name;
-        this.saveCaixas();
-        caixaNameInput.value = '';
-        this.renderCaixaList();
-        this.showNotification('Caixa incluído com sucesso!', 'success');
     }
 
-    editCaixa(key) {
-        const caixaNameInput = document.getElementById('caixaName');
-        caixaNameInput.value = this.caixas[key];
-        this.editingCaixaKey = key;
-        document.getElementById('addCaixaBtn').style.display = 'none';
-        document.getElementById('updateCaixaBtn').style.display = '';
-        document.getElementById('cancelCaixaEditBtn').style.display = '';
+    async editCaixa(key) {
+        // Busca o nome e key real do backend
+        try {
+            const res = await fetch('http://localhost:3001/api/caixas');
+            const caixasArr = await res.json();
+            const caixa = caixasArr.find(c => c.key === key);
+            if (!caixa) {
+                this.showNotification('Caixa não encontrado no banco.', 'error');
+                return;
+            }
+            document.getElementById('caixaName').value = caixa.name;
+            // Salva a key real do banco para update
+            this.editingCaixaKey = caixa.key;
+            document.getElementById('addCaixaBtn').style.display = 'none';
+            document.getElementById('updateCaixaBtn').style.display = '';
+            document.getElementById('cancelCaixaEditBtn').style.display = '';
+        } catch (err) {
+            this.showNotification('Erro ao buscar caixa para edição', 'error');
+        }
     }
 
-    updateCaixa() {
+    async updateCaixa() {
         const caixaNameInput = document.getElementById('caixaName');
         const name = caixaNameInput.value.trim();
         if (!name || !this.editingCaixaKey) return;
-        // Atualiza o nome
-        this.caixas[this.editingCaixaKey] = name;
-        this.saveCaixas();
-        this.editingCaixaKey = null;
-        caixaNameInput.value = '';
-        document.getElementById('addCaixaBtn').style.display = '';
-        document.getElementById('updateCaixaBtn').style.display = 'none';
-        document.getElementById('cancelCaixaEditBtn').style.display = 'none';
-        this.renderCaixaList();
-        this.showNotification('Caixa alterado com sucesso!', 'success');
+        try {
+            // Sempre usa a key original, não gera nova key!
+            const res = await fetch(`http://localhost:3001/api/caixas/${this.editingCaixaKey}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                this.showNotification(data.error || 'Erro ao alterar caixa', 'error');
+                return;
+            }
+            this.editingCaixaKey = null;
+            caixaNameInput.value = '';
+            document.getElementById('addCaixaBtn').style.display = '';
+            document.getElementById('updateCaixaBtn').style.display = 'none';
+            document.getElementById('cancelCaixaEditBtn').style.display = 'none';
+            await this.renderCaixaList();
+            this.showNotification('Caixa alterado com sucesso!', 'success');
+        } catch (err) {
+            this.showNotification('Erro ao alterar caixa', 'error');
+        }
     }
 
-    deleteCaixa(key) {
+    async deleteCaixa(key) {
         if (!confirm('Tem certeza que deseja excluir este caixa?')) return;
-        delete this.caixas[key];
-        this.saveCaixas();
-        this.renderCaixaList();
-        this.showNotification('Caixa excluído com sucesso!', 'success');
+        try {
+            const res = await fetch(`http://localhost:3001/api/caixas/${key}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const data = await res.json();
+                this.showNotification(data.error || 'Erro ao excluir caixa', 'error');
+                return;
+            }
+            await this.renderCaixaList();
+            this.showNotification('Caixa excluído com sucesso!', 'success');
+        } catch (err) {
+            this.showNotification('Erro ao excluir caixa', 'error');
+        }
     }
 
     cancelCaixaEdit() {
@@ -1144,27 +1219,35 @@ printReportsTable() {
         document.getElementById('cancelCaixaEditBtn').style.display = 'none';
     }
 
-    saveCaixas() {
-        localStorage.setItem('churchCaixas', JSON.stringify(this.caixas));
-        CAIXAS = { ...this.caixas };
-        this.updateCaixaSelects();
-    }
-
     updateCaixaSelects() {
         // Atualiza todos os selects de caixa do sistema
         const selects = [
             document.getElementById('reportCaixa'),
             document.getElementById('filterCaixa'),
-            document.getElementById('caixa'),
-            document.getElementById('transferTo')
+            document.getElementById('transactionCaixa'),
+            document.getElementById('transferToCaixa')
         ].filter(Boolean);
         selects.forEach(select => {
             const current = select.value;
-            select.innerHTML = '<option value="todos">Todos</option>';
+            // Se for um select de filtro, mantém a opção 'Todos'
+            if (select.id === 'reportCaixa' || select.id === 'filterCaixa') {
+                select.innerHTML = '<option value="todos">Todos</option>';
+            } else {
+                select.innerHTML = '<option value="">Selecione o caixa</option>';
+            }
             Object.entries(this.caixas).forEach(([key, value]) => {
                 select.innerHTML += `<option value="${key}">${value}</option>`;
             });
-            select.value = current && this.caixas[current] ? current : 'todos';
+            // Mantém o valor selecionado se ainda existir
+            if (current && this.caixas[current]) {
+                select.value = current;
+            } else {
+                if (select.id === 'reportCaixa' || select.id === 'filterCaixa') {
+                    select.value = 'todos';
+                } else {
+                    select.value = '';
+                }
+            }
         });
     }
     formatCurrency(value) {
@@ -1236,33 +1319,51 @@ printReportsTable() {
     }
 
     handleChurchDataSubmit() {
-        this.churchData = {
+        const updated = {
+            id: this.churchData.id,
             name: document.getElementById('churchName').value,
             address: document.getElementById('churchAddress').value,
             phone: document.getElementById('churchPhone').value,
             email: document.getElementById('churchEmail').value,
-            cnpj: document.getElementById('churchCnpj').value
+            cnpj: document.getElementById('churchCnpj').value,
+            logoUrl: this.churchLogo || null
         };
-
-        this.saveData();
-        this.showNotification('Dados da igreja salvos com sucesso!', 'success');
+        fetch('http://localhost:3001/api/church', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+        })
+        .then(async res => {
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Erro ao salvar dados da igreja');
+            }
+            return res.json();
+        })
+        .then(data => {
+            this.churchData = data;
+            this.churchLogo = data.logoUrl || null;
+            this.updateLogoPreview();
+            this.showNotification('Dados da igreja salvos com sucesso!', 'success');
+        })
+        .catch(err => {
+            this.showNotification(err.message, 'error');
+        });
     }
 
     handleLogoUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         if (!file.type.startsWith('image/')) {
             this.showNotification('Por favor, selecione apenas arquivos de imagem.', 'error');
             return;
         }
-
         const reader = new FileReader();
         reader.onload = (e) => {
             this.churchLogo = e.target.result;
             this.updateLogoPreview();
-            this.saveData();
-            this.showNotification('Logo carregada com sucesso!', 'success');
+            // Salva logo no banco junto com churchData
+            this.handleChurchDataSubmit();
         };
         reader.readAsDataURL(file);
     }
@@ -1270,7 +1371,6 @@ printReportsTable() {
     updateLogoPreview() {
         const preview = document.getElementById('logoPreview');
         const removeBtn = document.getElementById('removeLogoBtn');
-
         if (this.churchLogo) {
             preview.innerHTML = `<img src="${this.churchLogo}" alt="Logo da Igreja">`;
             removeBtn.style.display = 'inline-flex';
@@ -1286,7 +1386,8 @@ printReportsTable() {
     removeLogo() {
         this.churchLogo = null;
         this.updateLogoPreview();
-        localStorage.removeItem('churchLogo');
+        // Remove logo do banco junto com churchData
+        this.handleChurchDataSubmit();
         this.showNotification('Logo removida com sucesso!', 'success');
     }
 
