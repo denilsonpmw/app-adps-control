@@ -503,10 +503,14 @@ class ChurchFinanceApp {
     }
 
     renderDashboardChart() {
-        const container = document.getElementById('dashboardChart');
-        if (!container) return;
+    const container = document.getElementById('dashboardChart');
+    const legendContainer = document.getElementById('dashboardLegend');
+    if (!container) return;
+    if (!legendContainer) return;
         if (!this.transactions || this.transactions.length === 0) {
             container.innerHTML = '<p>Nenhum dado para exibir</p>';
+            legendContainer.innerHTML = '';
+            legendContainer.style.display = 'none';
             return;
         }
 
@@ -532,16 +536,18 @@ class ChurchFinanceApp {
         const totalGeral = totais.reduce((a, b) => a + b, 0);
         if (totalGeral === 0) {
             container.innerHTML = '<p>Nenhum dado para exibir</p>';
+            legendContainer.innerHTML = '';
+            legendContainer.style.display = 'none';
             return;
         }
 
-        // Tons de verde do mais escuro para o mais claro
+        // Tons de verde do sistema (usar variáveis CSS)
         const verdes = [
-            '#22c55e',
+            getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#22c55e',
             '#4ade80',
             '#86efac',
             '#bbf7d0',
-            '#dcfce7'
+            getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary').trim() || '#f8fafc'
         ];
         // Ordenar do maior para o menor para melhor visual
         const sorted = Object.entries(caixaData)
@@ -552,9 +558,10 @@ class ChurchFinanceApp {
             }))
             .sort((a, b) => b.valor - a.valor);
 
-        // Gera os slices da pizza
+        // Gera os slices da pizza e percentuais
         let startAngle = 0;
         let slices = '';
+        let percLabels = '';
         sorted.forEach((item, i) => {
             if (item.valor === 0) return;
             const angle = (item.valor / totalGeral) * 360;
@@ -569,6 +576,16 @@ class ChurchFinanceApp {
             const y2 = cy + r * Math.sin(Math.PI * endAngle / 180);
             const color = verdes[i % verdes.length];
             slices += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}" stroke="#fff" stroke-width="2" />`;
+            // Percentual
+            const percent = ((item.valor / totalGeral) * 100).toFixed(1).replace('.', ',');
+            // Posição do label (meio do arco)
+            const midAngle = startAngle + angle / 2;
+            const labelR = r * 0.65;
+            const lx = cx + labelR * Math.cos(Math.PI * midAngle / 180);
+            const ly = cy + labelR * Math.sin(Math.PI * midAngle / 180) + 5;
+            // Usa a cor verde escuro do sistema
+            const percentColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-dark').trim() || '#16a34a';
+            percLabels += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="16" fill="${percentColor}" font-weight="bold">${percent}%</text>`;
             startAngle += angle;
         });
 
@@ -581,10 +598,13 @@ class ChurchFinanceApp {
 
         container.innerHTML = `
             <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:32px;">
-                <svg width="260" height="260" viewBox="0 0 260 260">${slices}</svg>
-                <div style="min-width:120px;">${legend}</div>
+                <div class="card" style="padding:16px 8px; margin-bottom:0; background:var(--bg-secondary);">
+                    <svg width="260" height="260" viewBox="0 0 260 260">${slices}${percLabels}</svg>
+                </div>
             </div>
         `;
+        legendContainer.innerHTML = legend;
+        legendContainer.style.display = legend ? 'block' : 'none';
     }
 
     updateBalances() {
@@ -731,14 +751,19 @@ class ChurchFinanceApp {
     }
 
     createReceiptHTML(receipt) {
+        // Ajusta classes e estilos para entrada/saída
+        const isSaida = receipt.type === 'saida';
+        const borderClass = isSaida ? 'receipt-item danger-border' : 'receipt-item success-border';
+        const amountClass = isSaida ? 'receipt-amount danger-text' : 'receipt-amount success-text';
+        const chipClass = isSaida ? 'receipt-type danger-chip' : 'receipt-type success-chip';
         return `
-            <div class="receipt-item">
+            <div class="${borderClass}" style="border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.08); margin-bottom: 16px;">
                 <div class="receipt-header">
                     <div class="receipt-name">${receipt.name}</div>
-                    <div class="receipt-amount">${this.formatCurrency(receipt.amount)}</div>
+                    <div class="${amountClass}">${this.formatCurrency(receipt.amount)}</div>
                 </div>
                 <div class="receipt-details">
-                    <span class="receipt-type">${receipt.type}</span>
+                    <span class="${chipClass}">${this.getReceiptTypeLabel(receipt.type)}</span>
                     <span>${this.formatDate(receipt.date)}</span>
                 </div>
                 ${receipt.notes ? `<div class="receipt-notes">${receipt.notes}</div>` : ''}
