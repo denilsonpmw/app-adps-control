@@ -250,7 +250,7 @@
                     <div class="filter-group">
                         <label>Caixa:</label>
                         <select id="reportCaixa">
-                            <option value="">Todos</option>
+                            <option value="todos">Todos</option>
                             <option value="escola">Escola Bíblica</option>
                             <option value="missoes">Missões</option>
                             <option value="campo">Missões do Campo</option>
@@ -260,7 +260,7 @@
                     <div class="filter-group">
                         <label>Tipo:</label>
                         <select id="reportType">
-                            <option value="">Todos</option>
+                            <option value="todos">Todos</option>
                             <option value="entrada">Entradas</option>
                             <option value="saida">Saídas</option>
                             <option value="transferencia">Transferências</option>
@@ -286,6 +286,7 @@
                                  <div id="reportsChart" class="reports-chart">
                      <!-- Gráfico será renderizado aqui -->
                  </div>
+                 <div id="reportsLegend" class="reports-legend-card card" style="margin-top:16px;display:none;"></div>
              </div>
 
              <!-- Configurações -->
@@ -296,6 +297,21 @@
                  </div>
 
                  <div class="settings-container">
+                <div class="settings-section">
+                    <h4><i class="fas fa-cash-register"></i> Gerenciar Caixas</h4>
+                    <form id="caixaForm" class="settings-form" style="margin-bottom: 1em;">
+                        <div class="form-group">
+                            <label for="caixaName">Nome do Caixa</label>
+                            <input type="text" id="caixaName" placeholder="Ex: Escola Bíblica" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary" id="addCaixaBtn"><i class="fas fa-plus"></i> Incluir Caixa</button>
+                            <button type="button" class="btn-secondary" id="updateCaixaBtn" style="display:none;"><i class="fas fa-save"></i> Alterar Caixa</button>
+                            <button type="button" class="btn-secondary" id="cancelCaixaEditBtn" style="display:none;">Cancelar</button>
+                        </div>
+                    </form>
+                    <ul id="caixaList" class="caixa-list"></ul>
+                </div>
                      <div class="settings-section">
                          <h4><i class="fas fa-church"></i> Dados da Igreja</h4>
                          <form id="churchDataForm" class="settings-form">

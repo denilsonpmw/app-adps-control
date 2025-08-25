@@ -1,5 +1,5 @@
 // Configurações e dados iniciais
-const CAIXAS = {
+let CAIXAS = JSON.parse(localStorage.getItem('churchCaixas')) || {
     escola: 'Escola Bíblica',
     missoes: 'Missões',
     campo: 'Missões do Campo',
@@ -15,6 +15,7 @@ const USUARIOS = {
 // Classe principal do aplicativo
 class ChurchFinanceApp {
     constructor() {
+    this.caixas = { ...CAIXAS };
         this.currentUser = null;
         this.transactions = [];
         this.receipts = [];
@@ -38,6 +39,7 @@ class ChurchFinanceApp {
     }
 
     init() {
+    this.renderCaixaList();
         // Limpar localStorage para forçar recarregamento dos dados de exemplo
         localStorage.removeItem('churchTransactions');
         localStorage.removeItem('churchReceipts');
@@ -60,17 +62,17 @@ class ChurchFinanceApp {
         if (savedTransactions) {
             this.transactions = JSON.parse(savedTransactions);
         } else {
-            // Dados de exemplo para demonstração
+            // Dados de exemplo para demonstração (junho, julho e agosto de 2025)
             this.transactions = [
-                // Janeiro 2024
+                // Agosto 2025
                 {
                     id: 1,
                     type: 'entrada',
                     caixa: 'escola',
                     description: 'Oferta Escola Bíblica',
                     amount: 150.00,
-                    date: '2024-01-15',
-                    timestamp: Date.now() - 86400000
+                    date: '2025-08-15',
+                    timestamp: new Date('2025-08-15').getTime()
                 },
                 {
                     id: 2,
@@ -78,8 +80,8 @@ class ChurchFinanceApp {
                     caixa: 'missoes',
                     description: 'Carnê de Missões - João Silva',
                     amount: 50.00,
-                    date: '2024-01-14',
-                    timestamp: Date.now() - 172800000
+                    date: '2025-08-14',
+                    timestamp: new Date('2025-08-14').getTime()
                 },
                 {
                     id: 3,
@@ -87,8 +89,8 @@ class ChurchFinanceApp {
                     caixa: 'geral',
                     description: 'Material de expediente',
                     amount: 25.50,
-                    date: '2024-01-13',
-                    timestamp: Date.now() - 259200000
+                    date: '2025-08-13',
+                    timestamp: new Date('2025-08-13').getTime()
                 },
                 {
                     id: 4,
@@ -96,8 +98,8 @@ class ChurchFinanceApp {
                     caixa: 'geral',
                     description: 'Oferta de Culto',
                     amount: 320.00,
-                    date: '2024-01-12',
-                    timestamp: Date.now() - 345600000
+                    date: '2025-08-12',
+                    timestamp: new Date('2025-08-12').getTime()
                 },
                 {
                     id: 5,
@@ -105,8 +107,8 @@ class ChurchFinanceApp {
                     caixa: 'campo',
                     description: 'Doação para Missões do Campo',
                     amount: 200.00,
-                    date: '2024-01-11',
-                    timestamp: Date.now() - 432000000
+                    date: '2025-08-11',
+                    timestamp: new Date('2025-08-11').getTime()
                 },
                 {
                     id: 6,
@@ -115,17 +117,18 @@ class ChurchFinanceApp {
                     description: 'Transferência para Escola Bíblica',
                     amount: 100.00,
                     transferTo: 'escola',
-                    date: '2024-01-10',
-                    timestamp: Date.now() - 518400000
+                    date: '2025-08-10',
+                    timestamp: new Date('2025-08-10').getTime()
                 },
+                // Julho 2025
                 {
                     id: 7,
                     type: 'saida',
                     caixa: 'missoes',
                     description: 'Envio para Missionário',
                     amount: 150.00,
-                    date: '2024-01-09',
-                    timestamp: Date.now() - 604800000
+                    date: '2025-07-09',
+                    timestamp: new Date('2025-07-09').getTime()
                 },
                 {
                     id: 8,
@@ -133,8 +136,8 @@ class ChurchFinanceApp {
                     caixa: 'escola',
                     description: 'Oferta Especial - Escola Bíblica',
                     amount: 75.00,
-                    date: '2024-01-08',
-                    timestamp: Date.now() - 691200000
+                    date: '2025-07-08',
+                    timestamp: new Date('2025-07-08').getTime()
                 },
                 {
                     id: 9,
@@ -142,8 +145,8 @@ class ChurchFinanceApp {
                     caixa: 'geral',
                     description: 'Manutenção do Prédio',
                     amount: 180.00,
-                    date: '2024-01-07',
-                    timestamp: Date.now() - 777600000
+                    date: '2025-07-07',
+                    timestamp: new Date('2025-07-07').getTime()
                 },
                 {
                     id: 10,
@@ -151,8 +154,8 @@ class ChurchFinanceApp {
                     caixa: 'missoes',
                     description: 'Carnê de Missões - Maria Santos',
                     amount: 80.00,
-                    date: '2024-01-06',
-                    timestamp: Date.now() - 864000000
+                    date: '2025-07-06',
+                    timestamp: new Date('2025-07-06').getTime()
                 },
                 {
                     id: 11,
@@ -161,8 +164,8 @@ class ChurchFinanceApp {
                     description: 'Transferência para Missões',
                     amount: 120.00,
                     transferTo: 'missoes',
-                    date: '2024-01-05',
-                    timestamp: Date.now() - 950400000
+                    date: '2025-07-05',
+                    timestamp: new Date('2025-07-05').getTime()
                 },
                 {
                     id: 12,
@@ -170,8 +173,8 @@ class ChurchFinanceApp {
                     caixa: 'campo',
                     description: 'Oferta para Missões do Campo',
                     amount: 95.00,
-                    date: '2024-01-04',
-                    timestamp: Date.now() - 1036800000
+                    date: '2025-07-04',
+                    timestamp: new Date('2025-07-04').getTime()
                 },
                 {
                     id: 13,
@@ -179,122 +182,39 @@ class ChurchFinanceApp {
                     caixa: 'escola',
                     description: 'Material Didático',
                     amount: 45.00,
-                    date: '2024-01-03',
-                    timestamp: Date.now() - 1123200000
+                    date: '2025-07-03',
+                    timestamp: new Date('2025-07-03').getTime()
                 },
+                // Junho 2025
                 {
                     id: 14,
                     type: 'entrada',
                     caixa: 'geral',
                     description: 'Oferta de Culto',
-                    amount: 280.00,
-                    date: '2024-01-02',
-                    timestamp: Date.now() - 1209600000
+                    amount: 210.00,
+                    date: '2025-06-15',
+                    timestamp: new Date('2025-06-15').getTime()
                 },
                 {
                     id: 15,
                     type: 'saida',
                     caixa: 'campo',
-                    description: 'Apoio Missionário',
-                    amount: 90.00,
-                    date: '2024-01-01',
-                    timestamp: Date.now() - 1296000000
-                },
-                // Dezembro 2023
-                {
-                    id: 26,
-                    type: 'entrada',
-                    caixa: 'geral',
-                    description: 'Oferta de Natal',
-                    amount: 450.00,
-                    date: '2023-12-31',
-                    timestamp: Date.now() - 1382400000
-                },
-                {
-                    id: 27,
-                    type: 'entrada',
-                    caixa: 'missoes',
-                    description: 'Carnê de Missões - Pedro Costa',
+                    description: 'Compra de Bíblias',
                     amount: 60.00,
-                    date: '2023-12-30',
-                    timestamp: Date.now() - 1468800000
+                    date: '2025-06-10',
+                    timestamp: new Date('2025-06-10').getTime()
                 },
                 {
-                    id: 28,
-                    type: 'transferencia',
-                    caixa: 'geral',
-                    description: 'Transferência para Campo',
-                    amount: 80.00,
-                    transferTo: 'campo',
-                    date: '2023-12-29',
-                    timestamp: Date.now() - 1555200000
-                },
-                {
-                    id: 29,
-                    type: 'saida',
-                    caixa: 'geral',
-                    description: 'Decoração de Natal',
-                    amount: 120.00,
-                    date: '2023-12-28',
-                    timestamp: Date.now() - 1641600000
-                },
-                {
-                    id: 30,
+                    id: 16,
                     type: 'entrada',
-                    caixa: 'escola',
-                    description: 'Oferta Escola Bíblica',
-                    amount: 110.00,
-                    date: '2023-12-27',
-                    timestamp: Date.now() - 1728000000
-                },
-                {
-                    id: 31,
-                    type: 'entrada',
-                    caixa: 'campo',
-                    description: 'Doação Especial - Missões',
-                    amount: 300.00,
-                    date: '2023-12-26',
-                    timestamp: Date.now() - 1814400000
-                },
-                {
-                    id: 32,
-                    type: 'saida',
                     caixa: 'missoes',
-                    description: 'Envio para Missionário',
-                    amount: 200.00,
-                    date: '2023-12-25',
-                    timestamp: Date.now() - 1900800000
-                },
-                {
-                    id: 33,
-                    type: 'entrada',
-                    caixa: 'geral',
-                    description: 'Oferta de Culto',
-                    amount: 350.00,
-                    date: '2023-12-24',
-                    timestamp: Date.now() - 1987200000
-                },
-                {
-                    id: 34,
-                    type: 'transferencia',
-                    caixa: 'escola',
-                    description: 'Transferência para Missões',
-                    amount: 70.00,
-                    transferTo: 'missoes',
-                    date: '2023-12-23',
-                    timestamp: Date.now() - 2073600000
-                },
-                {
-                    id: 35,
-                    type: 'saida',
-                    caixa: 'geral',
-                    description: 'Material de Limpeza',
-                    amount: 35.00,
-                    date: '2023-12-22',
-                    timestamp: Date.now() - 2160000000
+                    description: 'Doação para Missões',
+                    amount: 130.00,
+                    date: '2025-06-05',
+                    timestamp: new Date('2025-06-05').getTime()
                 }
             ];
-        }
+    }
 
         if (savedReceipts) {
             this.receipts = JSON.parse(savedReceipts);
@@ -425,6 +345,17 @@ class ChurchFinanceApp {
 
     // Configuração de event listeners
     setupEventListeners() {
+        // Gerenciamento de Caixas
+        document.getElementById('caixaForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (this.editingCaixaKey) {
+                this.updateCaixa();
+            } else {
+                this.addCaixa();
+            }
+        });
+        document.getElementById('updateCaixaBtn').addEventListener('click', () => this.updateCaixa());
+        document.getElementById('cancelCaixaEditBtn').addEventListener('click', () => this.cancelCaixaEdit());
         // Login
         document.getElementById('loginForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -919,6 +850,7 @@ class ChurchFinanceApp {
         if (caixaFilter && caixaFilter !== 'todos') {
             filteredTransactions = filteredTransactions.filter(t => t.caixa === caixaFilter);
         }
+        // Permitir também o valor vazio como "todos"
         if (typeFilter && typeFilter !== 'todos') {
             filteredTransactions = filteredTransactions.filter(t => t.type === typeFilter);
         }
@@ -942,7 +874,6 @@ class ChurchFinanceApp {
 
     renderReportsChart(transactions) {
         const container = document.getElementById('reportsChart');
-        
         if (transactions.length === 0) {
             container.innerHTML = '<p>Nenhum dado para exibir no período selecionado</p>';
             return;
@@ -956,7 +887,6 @@ class ChurchFinanceApp {
                 saidas: 0
             };
         });
-
         transactions.forEach(transaction => {
             if (transaction.type === 'entrada') {
                 caixaData[transaction.caixa].entradas += transaction.amount;
@@ -965,34 +895,87 @@ class ChurchFinanceApp {
             }
         });
 
-        // Criar gráfico simples
-        let chartHTML = '<div style="width: 100%; height: 250px; display: flex; align-items: end; gap: 20px; padding: 20px;">';
-        
-        Object.keys(caixaData).forEach(caixa => {
-            const data = caixaData[caixa];
-            const total = data.entradas - data.saidas;
-            const maxValue = Math.max(...Object.values(caixaData).map(d => Math.abs(d.entradas - d.saidas)));
-            const height = maxValue > 0 ? (Math.abs(total) / maxValue) * 200 : 0;
-            
-            chartHTML += `
-                <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
-                    <div style="
-                        width: 40px; 
-                        height: ${height}px; 
-                        background: ${total >= 0 ? '#22c55e' : '#ef4444'}; 
-                        border-radius: 4px;
-                        margin-bottom: 10px;
-                    "></div>
-                    <div style="font-size: 12px; text-align: center; color: #718096;">
-                        <div style="font-weight: 600;">${CAIXAS[caixa]}</div>
-                        <div>${this.formatCurrency(total)}</div>
-                    </div>
-                </div>
-            `;
+        // Calcular totais para pizza
+        const totais = Object.keys(caixaData).map(caixa => Math.max(0, caixaData[caixa].entradas - caixaData[caixa].saidas));
+        const totalGeral = totais.reduce((a, b) => a + b, 0);
+        if (totalGeral === 0) {
+            container.innerHTML = '<p>Nenhum dado para exibir no período selecionado</p>';
+            return;
+        }
+
+        // Tons de verde do mais escuro para o mais claro
+        const verdes = [
+            '#22c55e', // mais escuro
+            '#4ade80',
+            '#86efac',
+            '#bbf7d0',
+            '#dcfce7'
+        ];
+        // Ordenar do maior para o menor para melhor visual
+        const sorted = Object.entries(caixaData)
+            .map(([caixa, data]) => ({
+                key: caixa,
+                nome: CAIXAS[caixa],
+                valor: Math.max(0, data.entradas - data.saidas)
+            }))
+            .sort((a, b) => b.valor - a.valor);
+
+        // Gera os slices da pizza
+        let startAngle = 0;
+        let slices = '';
+        sorted.forEach((item, i) => {
+            if (item.valor === 0) return;
+            const angle = (item.valor / totalGeral) * 360;
+            const endAngle = startAngle + angle;
+            // Calcula coordenadas para arc
+            const largeArc = angle > 180 ? 1 : 0;
+            const r = 90;
+            const cx = 130, cy = 130;
+            const x1 = cx + r * Math.cos(Math.PI * startAngle / 180);
+            const y1 = cy + r * Math.sin(Math.PI * startAngle / 180);
+            const x2 = cx + r * Math.cos(Math.PI * endAngle / 180);
+            const y2 = cy + r * Math.sin(Math.PI * endAngle / 180);
+            const color = verdes[i % verdes.length];
+            slices += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}" />`;
+            startAngle = endAngle;
         });
-        
-        chartHTML += '</div>';
-        container.innerHTML = chartHTML;
+
+        // Rótulos de dados nos slices
+        let valueLabels = '';
+        startAngle = 0;
+        sorted.forEach((item, i) => {
+            if (item.valor === 0) return;
+            const angle = (item.valor / totalGeral) * 360;
+            const midAngle = startAngle + angle / 2;
+            const rValor = 90;
+            const cx = 130, cy = 130;
+            const xValor = cx + rValor * Math.cos(Math.PI * midAngle / 180);
+            const yValor = cy + rValor * Math.sin(Math.PI * midAngle / 180);
+            valueLabels += `<text x="${xValor}" y="${yValor}" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" font-size="15" fill="#22c55e" font-weight="bold" stroke="#166534" stroke-width="2" paint-order="stroke" style="paint-order:stroke;">${this.formatCurrency(item.valor)}</text>`;
+            startAngle += angle;
+        });
+
+        container.innerHTML = `
+            <svg width="260" height="260" viewBox="0 0 260 260" style="display:block;margin:0 auto;">
+                <g>
+                    ${slices}
+                    ${valueLabels}
+                </g>
+            </svg>
+        `;
+        // Renderiza a legenda no card separado
+        const legendContainer = document.getElementById('reportsLegend');
+        if (legendContainer) {
+            const legendHtml = sorted.filter(item => item.valor > 0).map((item, i) => {
+                const color = verdes[i % verdes.length];
+                return `<span style="display:flex;align-items:center;font-size:13px;gap:4px;margin:4px 10px 4px 0;">
+                    <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${color};border:1px solid #14532d;"></span>
+                    <span style="color:#fff;font-weight:400;">${item.nome}</span>
+                </span>`;
+            }).join('');
+            legendContainer.innerHTML = `<div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:center;">${legendHtml}</div>`;
+            legendContainer.style.display = legendHtml ? 'block' : 'none';
+        }
     }
 
     // Exportação CSV
@@ -1041,7 +1024,9 @@ class ChurchFinanceApp {
             ].join(','))
         ].join('\n');
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Adiciona BOM para garantir acentuação correta em Excel e outros programas
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
@@ -1055,6 +1040,104 @@ class ChurchFinanceApp {
     }
 
     // Utilitários
+    // Gerenciamento de Caixas
+    renderCaixaList() {
+        const caixaList = document.getElementById('caixaList');
+        caixaList.innerHTML = '';
+        Object.entries(this.caixas).forEach(([key, value]) => {
+            const li = document.createElement('li');
+            li.className = 'caixa-item';
+            li.innerHTML = `
+                <span>${value}</span>
+                <button class="btn-secondary" onclick="app.editCaixa('${key}')"><i class="fas fa-edit"></i></button>
+                <button class="btn-danger" onclick="app.deleteCaixa('${key}')"><i class="fas fa-trash"></i></button>
+            `;
+            caixaList.appendChild(li);
+        });
+        this.updateCaixaSelects();
+    }
+
+    addCaixa() {
+        const caixaNameInput = document.getElementById('caixaName');
+        const name = caixaNameInput.value.trim();
+        if (!name) return;
+        // Gera uma chave única
+        const key = name.toLowerCase().replace(/[^a-z0-9]/gi, '');
+        if (this.caixas[key]) {
+            this.showNotification('Já existe um caixa com esse nome.', 'error');
+            return;
+        }
+        this.caixas[key] = name;
+        this.saveCaixas();
+        caixaNameInput.value = '';
+        this.renderCaixaList();
+        this.showNotification('Caixa incluído com sucesso!', 'success');
+    }
+
+    editCaixa(key) {
+        const caixaNameInput = document.getElementById('caixaName');
+        caixaNameInput.value = this.caixas[key];
+        this.editingCaixaKey = key;
+        document.getElementById('addCaixaBtn').style.display = 'none';
+        document.getElementById('updateCaixaBtn').style.display = '';
+        document.getElementById('cancelCaixaEditBtn').style.display = '';
+    }
+
+    updateCaixa() {
+        const caixaNameInput = document.getElementById('caixaName');
+        const name = caixaNameInput.value.trim();
+        if (!name || !this.editingCaixaKey) return;
+        // Atualiza o nome
+        this.caixas[this.editingCaixaKey] = name;
+        this.saveCaixas();
+        this.editingCaixaKey = null;
+        caixaNameInput.value = '';
+        document.getElementById('addCaixaBtn').style.display = '';
+        document.getElementById('updateCaixaBtn').style.display = 'none';
+        document.getElementById('cancelCaixaEditBtn').style.display = 'none';
+        this.renderCaixaList();
+        this.showNotification('Caixa alterado com sucesso!', 'success');
+    }
+
+    deleteCaixa(key) {
+        if (!confirm('Tem certeza que deseja excluir este caixa?')) return;
+        delete this.caixas[key];
+        this.saveCaixas();
+        this.renderCaixaList();
+        this.showNotification('Caixa excluído com sucesso!', 'success');
+    }
+
+    cancelCaixaEdit() {
+        this.editingCaixaKey = null;
+        document.getElementById('caixaName').value = '';
+        document.getElementById('addCaixaBtn').style.display = '';
+        document.getElementById('updateCaixaBtn').style.display = 'none';
+        document.getElementById('cancelCaixaEditBtn').style.display = 'none';
+    }
+
+    saveCaixas() {
+        localStorage.setItem('churchCaixas', JSON.stringify(this.caixas));
+        CAIXAS = { ...this.caixas };
+        this.updateCaixaSelects();
+    }
+
+    updateCaixaSelects() {
+        // Atualiza todos os selects de caixa do sistema
+        const selects = [
+            document.getElementById('reportCaixa'),
+            document.getElementById('filterCaixa'),
+            document.getElementById('caixa'),
+            document.getElementById('transferTo')
+        ].filter(Boolean);
+        selects.forEach(select => {
+            const current = select.value;
+            select.innerHTML = '<option value="todos">Todos</option>';
+            Object.entries(this.caixas).forEach(([key, value]) => {
+                select.innerHTML += `<option value="${key}">${value}</option>`;
+            });
+            select.value = current && this.caixas[current] ? current : 'todos';
+        });
+    }
     formatCurrency(value) {
         return new Intl.NumberFormat('pt-BR', {
             style: 'currency',

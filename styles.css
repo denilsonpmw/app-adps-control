@@ -527,14 +527,16 @@ body {
     display: flex;
     gap: 15px;
     margin-bottom: 20px;
-    flex-wrap: wrap;
-    align-items: end;
+    flex-wrap: nowrap;
+    align-items: flex-end;
 }
 
 .filter-group {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    flex: 1 1 0;
+    min-width: 120px;
 }
 
 .filter-group label {
@@ -598,29 +600,35 @@ body {
     border-left-color: var(--info-color);
 }
 
-.transaction-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
-}
-
-.transaction-title {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 1rem;
-}
-
-.transaction-amount {
-    font-weight: 700;
-    font-size: 1.125rem;
-}
-
-.transaction-amount.positive {
-    color: var(--success-color);
-}
-
-.transaction-amount.negative {
+    .transactions-filters,
+    .reports-filters {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    .filter-group {
+        min-width: 0;
+    }
+    .filter-group select,
+    .filter-group input {
+        min-width: 0;
+        width: 100%;
+    }
+    .reports-summary {
+        grid-template-columns: 1fr;
+    }
+    .modal.active {
+        padding: 10px;
+    }
+    .modal-content {
+        max-width: none;
+    }
+    .form-actions {
+        flex-direction: column;
+    }
+    .form-actions button {
+        width: 100%;
+    }
     color: var(--danger-color);
 }
 
