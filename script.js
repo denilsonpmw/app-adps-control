@@ -1,10 +1,13 @@
-// Configurações e dados iniciais
-let CAIXAS = JSON.parse(localStorage.getItem('churchCaixas')) || {
-    escola: 'Escola Bíblica',
-    missoes: 'Missões',
-    campo: 'Missões do Campo',
-    geral: 'Geral'
-};
+// Carregamento dinâmico dos caixas do backend
+let CAIXAS = {};
+async function loadCaixas() {
+    const res = await fetch('http://localhost:3001/api/caixas');
+    const caixasArr = await res.json();
+    CAIXAS = {};
+    caixasArr.forEach(caixa => {
+        CAIXAS[caixa.key] = caixa.name;
+    });
+}
 
 const USUARIOS = {
     admin: 'Administrador',
@@ -14,6 +17,30 @@ const USUARIOS = {
 
 // Classe principal do aplicativo
 class ChurchFinanceApp {
+    // Retorna o label amigável para o tipo de recibo
+    getReceiptTypeLabel(type) {
+        const labels = {
+            entrada: 'Entrada',
+            saida: 'Saída',
+            transferencia: 'Transferência',
+            'carnê': 'Carnê de Missões',
+            'oferta': 'Oferta de Culto',
+            'escola': 'Oferta Escola Bíblica',
+            'outro': 'Outro'
+        };
+        return labels[type] || type || '-';
+    }
+    // Carregar recibos do backend
+    async loadReceipts() {
+        try {
+            const res = await fetch('http://localhost:3001/api/receipts');
+            if (!res.ok) throw new Error('Error loading receipts');
+            this.receipts = await res.json();
+        } catch (err) {
+            this.receipts = [];
+            this.showNotification('Erro ao carregar recibos do servidor', 'error');
+        }
+    }
     constructor() {
     this.caixas = { ...CAIXAS };
         this.currentUser = null;
@@ -38,274 +65,43 @@ class ChurchFinanceApp {
         this.init();
     }
 
-    init() {
+    async init() {
+    await loadCaixas();
+    this.caixas = { ...CAIXAS };
     this.renderCaixaList();
-        // Limpar localStorage para forçar recarregamento dos dados de exemplo
-        localStorage.removeItem('churchTransactions');
-        localStorage.removeItem('churchReceipts');
-        
-        this.loadData();
+        await this.loadTransactions();
+        await this.loadReceipts();
         this.loadTheme();
         this.setupEventListeners();
         this.updateBalances();
         this.renderDashboard();
+
+        // Dropdown do usuário: toggle ao clicar no avatar
+        const userMenu = document.getElementById('userMenu');
+        if (userMenu) {
+            userMenu.addEventListener('click', function (e) {
+                // Não fecha ao clicar dentro do dropdown
+                if (e.target.closest('.user-dropdown')) return;
+                userMenu.classList.toggle('open');
+            });
+            // Fecha ao clicar fora
+            document.addEventListener('click', function (e) {
+                if (!userMenu.contains(e.target)) {
+                    userMenu.classList.remove('open');
+                }
+            });
+        }
     }
 
-    // Gerenciamento de dados com localStorage
-    loadData() {
-        const savedTransactions = localStorage.getItem('churchTransactions');
-        const savedReceipts = localStorage.getItem('churchReceipts');
-        const savedBalances = localStorage.getItem('churchBalances');
-        const savedChurchData = localStorage.getItem('churchData');
-        const savedChurchLogo = localStorage.getItem('churchLogo');
-
-        if (savedTransactions) {
-            this.transactions = JSON.parse(savedTransactions);
-        } else {
-            // Dados de exemplo para demonstração (junho, julho e agosto de 2025)
-            this.transactions = [
-                // Agosto 2025
-                {
-                    id: 1,
-                    type: 'entrada',
-                    caixa: 'escola',
-                    description: 'Oferta Escola Bíblica',
-                    amount: 150.00,
-                    date: '2025-08-15',
-                    timestamp: new Date('2025-08-15').getTime()
-                },
-                {
-                    id: 2,
-                    type: 'entrada',
-                    caixa: 'missoes',
-                    description: 'Carnê de Missões - João Silva',
-                    amount: 50.00,
-                    date: '2025-08-14',
-                    timestamp: new Date('2025-08-14').getTime()
-                },
-                {
-                    id: 3,
-                    type: 'saida',
-                    caixa: 'geral',
-                    description: 'Material de expediente',
-                    amount: 25.50,
-                    date: '2025-08-13',
-                    timestamp: new Date('2025-08-13').getTime()
-                },
-                {
-                    id: 4,
-                    type: 'entrada',
-                    caixa: 'geral',
-                    description: 'Oferta de Culto',
-                    amount: 320.00,
-                    date: '2025-08-12',
-                    timestamp: new Date('2025-08-12').getTime()
-                },
-                {
-                    id: 5,
-                    type: 'entrada',
-                    caixa: 'campo',
-                    description: 'Doação para Missões do Campo',
-                    amount: 200.00,
-                    date: '2025-08-11',
-                    timestamp: new Date('2025-08-11').getTime()
-                },
-                {
-                    id: 6,
-                    type: 'transferencia',
-                    caixa: 'geral',
-                    description: 'Transferência para Escola Bíblica',
-                    amount: 100.00,
-                    transferTo: 'escola',
-                    date: '2025-08-10',
-                    timestamp: new Date('2025-08-10').getTime()
-                },
-                // Julho 2025
-                {
-                    id: 7,
-                    type: 'saida',
-                    caixa: 'missoes',
-                    description: 'Envio para Missionário',
-                    amount: 150.00,
-                    date: '2025-07-09',
-                    timestamp: new Date('2025-07-09').getTime()
-                },
-                {
-                    id: 8,
-                    type: 'entrada',
-                    caixa: 'escola',
-                    description: 'Oferta Especial - Escola Bíblica',
-                    amount: 75.00,
-                    date: '2025-07-08',
-                    timestamp: new Date('2025-07-08').getTime()
-                },
-                {
-                    id: 9,
-                    type: 'saida',
-                    caixa: 'geral',
-                    description: 'Manutenção do Prédio',
-                    amount: 180.00,
-                    date: '2025-07-07',
-                    timestamp: new Date('2025-07-07').getTime()
-                },
-                {
-                    id: 10,
-                    type: 'entrada',
-                    caixa: 'missoes',
-                    description: 'Carnê de Missões - Maria Santos',
-                    amount: 80.00,
-                    date: '2025-07-06',
-                    timestamp: new Date('2025-07-06').getTime()
-                },
-                {
-                    id: 11,
-                    type: 'transferencia',
-                    caixa: 'geral',
-                    description: 'Transferência para Missões',
-                    amount: 120.00,
-                    transferTo: 'missoes',
-                    date: '2025-07-05',
-                    timestamp: new Date('2025-07-05').getTime()
-                },
-                {
-                    id: 12,
-                    type: 'entrada',
-                    caixa: 'campo',
-                    description: 'Oferta para Missões do Campo',
-                    amount: 95.00,
-                    date: '2025-07-04',
-                    timestamp: new Date('2025-07-04').getTime()
-                },
-                {
-                    id: 13,
-                    type: 'saida',
-                    caixa: 'escola',
-                    description: 'Material Didático',
-                    amount: 45.00,
-                    date: '2025-07-03',
-                    timestamp: new Date('2025-07-03').getTime()
-                },
-                // Junho 2025
-                {
-                    id: 14,
-                    type: 'entrada',
-                    caixa: 'geral',
-                    description: 'Oferta de Culto',
-                    amount: 210.00,
-                    date: '2025-06-15',
-                    timestamp: new Date('2025-06-15').getTime()
-                },
-                {
-                    id: 15,
-                    type: 'saida',
-                    caixa: 'campo',
-                    description: 'Compra de Bíblias',
-                    amount: 60.00,
-                    date: '2025-06-10',
-                    timestamp: new Date('2025-06-10').getTime()
-                },
-                {
-                    id: 16,
-                    type: 'entrada',
-                    caixa: 'missoes',
-                    description: 'Doação para Missões',
-                    amount: 130.00,
-                    date: '2025-06-05',
-                    timestamp: new Date('2025-06-05').getTime()
-                }
-            ];
-    }
-
-        if (savedReceipts) {
-            this.receipts = JSON.parse(savedReceipts);
-        } else {
-            // Dados de exemplo para demonstração
-            this.receipts = [
-                {
-                    id: 1,
-                    name: 'João Silva',
-                    type: 'carnê',
-                    amount: 50.00,
-                    date: '2024-01-14',
-                    notes: 'Carnê de Missões - Janeiro 2024',
-                    timestamp: Date.now() - 172800000
-                },
-                {
-                    id: 2,
-                    name: 'Maria Santos',
-                    type: 'oferta',
-                    amount: 100.00,
-                    date: '2024-01-12',
-                    notes: 'Oferta de Culto',
-                    timestamp: Date.now() - 345600000
-                },
-                {
-                    id: 3,
-                    name: 'Pedro Costa',
-                    type: 'carnê',
-                    amount: 60.00,
-                    date: '2023-12-30',
-                    notes: 'Carnê de Missões - Dezembro 2023',
-                    timestamp: Date.now() - 1468800000
-                },
-                {
-                    id: 4,
-                    name: 'Ana Oliveira',
-                    type: 'oferta',
-                    amount: 150.00,
-                    date: '2023-12-31',
-                    notes: 'Oferta de Natal',
-                    timestamp: Date.now() - 1382400000
-                },
-                {
-                    id: 5,
-                    name: 'Carlos Ferreira',
-                    type: 'escola',
-                    amount: 75.00,
-                    date: '2024-01-08',
-                    notes: 'Oferta Especial - Escola Bíblica',
-                    timestamp: Date.now() - 691200000
-                },
-                {
-                    id: 6,
-                    name: 'Lucia Mendes',
-                    type: 'carnê',
-                    amount: 80.00,
-                    date: '2024-01-06',
-                    notes: 'Carnê de Missões - Janeiro 2024',
-                    timestamp: Date.now() - 864000000
-                },
-                {
-                    id: 7,
-                    name: 'Roberto Alves',
-                    type: 'oferta',
-                    amount: 200.00,
-                    date: '2023-12-26',
-                    notes: 'Doação Especial - Missões',
-                    timestamp: Date.now() - 1814400000
-                },
-                {
-                    id: 8,
-                    name: 'Fernanda Lima',
-                    type: 'escola',
-                    amount: 110.00,
-                    date: '2023-12-27',
-                    notes: 'Oferta Escola Bíblica',
-                    timestamp: Date.now() - 1728000000
-                }
-            ];
-        }
-
-        if (savedBalances) {
-            this.balances = JSON.parse(savedBalances);
-        }
-
-        if (savedChurchData) {
-            this.churchData = JSON.parse(savedChurchData);
-        }
-
-        if (savedChurchLogo) {
-            this.churchLogo = savedChurchLogo;
+    // Carregar transações do backend
+    async loadTransactions() {
+        try {
+            const res = await fetch('http://localhost:3001/api/transactions');
+            if (!res.ok) throw new Error('Error loading transactions');
+            this.transactions = await res.json();
+        } catch (err) {
+            this.transactions = [];
+            this.showNotification('Erro ao carregar transações do servidor', 'error');
         }
     }
 
@@ -405,9 +201,8 @@ class ChurchFinanceApp {
         });
 
         // Filtros
-        document.getElementById('filterType').addEventListener('change', () => this.filterTransactions());
-        document.getElementById('filterCaixa').addEventListener('change', () => this.filterTransactions());
-        document.getElementById('filterDate').addEventListener('change', () => this.filterTransactions());
+    document.getElementById('filterType').addEventListener('change', () => this.filterTransactions());
+    document.getElementById('filterCaixa').addEventListener('change', () => this.filterTransactions());
 
         // Relatórios
         document.getElementById('exportCsvBtn').addEventListener('click', () => this.exportToCSV());
@@ -469,26 +264,43 @@ class ChurchFinanceApp {
         const userSelect = document.getElementById('userSelect');
         const password = document.getElementById('password');
 
+        console.log('Login submit:', { userSelect, password });
+        console.log('userSelect.value:', userSelect.value);
+        console.log('password.value:', password.value);
+
         if (!userSelect.value) {
             this.showNotification('Selecione um usuário', 'error');
+            console.log('Login falhou: usuário não selecionado');
             return;
         }
 
         if (!password.value) {
             this.showNotification('Digite uma senha', 'error');
+            console.log('Login falhou: senha não digitada');
             return;
         }
 
         // Login simulado - qualquer senha funciona
         this.currentUser = userSelect.value;
-        document.getElementById('currentUser').textContent = USUARIOS[this.currentUser];
-        
+        console.log('Usuário autenticado:', this.currentUser);
+        // Atualiza o nome do usuário no dropdown
+        const currentUserDiv = document.getElementById('currentUser');
+        if (currentUserDiv) {
+            currentUserDiv.textContent = USUARIOS[this.currentUser];
+            console.log('Nome exibido:', USUARIOS[this.currentUser]);
+        }
         this.switchScreen('mainApp');
         this.showNotification(`Bem-vindo, ${USUARIOS[this.currentUser]}!`, 'success');
+        console.log('Tela principal exibida');
     }
 
     handleLogout() {
         this.currentUser = null;
+        // Limpa o nome do usuário do dropdown
+        const currentUserDiv = document.getElementById('currentUser');
+        if (currentUserDiv) {
+            currentUserDiv.textContent = '';
+        }
         this.switchScreen('loginScreen');
         this.showNotification('Logout realizado com sucesso', 'success');
     }
@@ -517,7 +329,9 @@ class ChurchFinanceApp {
         // Carregar conteúdo específico da página
         switch (pageId) {
             case 'dashboard':
-                this.renderDashboard();
+                this.loadTransactions().then(() => {
+                    this.renderDashboard();
+                });
                 break;
             case 'transactions':
                 this.renderTransactions();
@@ -526,7 +340,9 @@ class ChurchFinanceApp {
                 this.renderReceipts();
                 break;
             case 'reports':
-                this.renderReports();
+                this.loadTransactions().then(() => {
+                    this.renderReports();
+                });
                 break;
             case 'settings':
                 this.renderSettings();
@@ -565,85 +381,210 @@ class ChurchFinanceApp {
     handleTransactionSubmit() {
         const form = document.getElementById('transactionForm');
         const formData = new FormData(form);
-        
-        const transaction = {
-            id: Date.now(),
-            type: formData.get('transactionType'),
-            caixa: formData.get('transactionCaixa'),
-            description: formData.get('transactionDescription'),
-            amount: parseFloat(formData.get('transactionAmount')),
-            date: formData.get('transactionDate'),
-            timestamp: Date.now()
-        };
-
-        if (transaction.type === 'transferencia') {
-            const transferTo = formData.get('transferToCaixa');
-            if (!transferTo || transferTo === transaction.caixa) {
+        const type = formData.get('transactionType');
+        const caixa = formData.get('transactionCaixa');
+    const person = formData.get('transactionPerson');
+    const description = formData.get('transactionDescription');
+        const amount = parseFloat(formData.get('transactionAmount'));
+        let date = formData.get('transactionDate');
+        // Ajusta para UTC-3 (Brasília) ao enviar para o backend
+        if (date) {
+            // Adiciona horário 03:00:00 para garantir meia-noite em UTC-3
+            date = date + 'T03:00:00.000Z';
+        }
+        let transferTo = undefined;
+        if (type === 'transferencia') {
+            transferTo = formData.get('transferToCaixa');
+            if (!transferTo || transferTo === caixa) {
                 this.showNotification('Selecione um caixa destino diferente', 'error');
                 return;
             }
-            transaction.transferTo = transferTo;
         }
-
+        // Enviar username do usuário logado
+        const transaction = {
+            type,
+            caixa,
+            description,
+            person,
+            amount,
+            date,
+            user: this.currentUser,
+            ...(transferTo ? { transferTo } : {})
+        };
         this.addTransaction(transaction);
         this.closeModal('transactionModal');
-        this.showNotification('Transação registrada com sucesso!', 'success');
     }
 
-    addTransaction(transaction) {
-        this.transactions.unshift(transaction);
-        
-        // Atualizar saldos
-        if (transaction.type === 'entrada') {
-            this.balances[transaction.caixa] += transaction.amount;
-        } else if (transaction.type === 'saida') {
-            this.balances[transaction.caixa] -= transaction.amount;
-        } else if (transaction.type === 'transferencia') {
-            this.balances[transaction.caixa] -= transaction.amount;
-            this.balances[transaction.transferTo] += transaction.amount;
-        }
+    async addTransaction(transaction) {
+        try {
+            const res = await fetch('http://localhost:3001/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(transaction)
+            });
+            if (!res.ok) throw new Error('Error adding transaction');
+            const newTransaction = await res.json();
+            this.transactions.unshift(newTransaction);
+            this.updateBalances();
+            this.renderDashboard();
+            this.renderTransactions();
+            this.showNotification('Transação registrada com sucesso!', 'success');
 
-        this.saveData();
-        this.updateBalances();
-        this.renderDashboard();
-        this.renderTransactions();
+            // Gerar recibo automaticamente
+            const receipt = {
+                name: newTransaction.person || '',
+                type: newTransaction.type,
+                amount: newTransaction.amount,
+                date: newTransaction.date,
+                notes: newTransaction.description || '',
+                user: this.currentUser,
+                transactionId: newTransaction.id
+            };
+            const receiptRes = await fetch('http://localhost:3001/api/receipts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(receipt)
+            });
+            if (receiptRes.ok) {
+                const newReceipt = await receiptRes.json();
+                this.receipts.unshift(newReceipt);
+                // Abrir página de impressão do recibo
+                setTimeout(() => {
+                    this.printReceipt(newReceipt.id);
+                }, 500);
+            }
+        } catch (err) {
+            this.showNotification('Erro ao registrar transação', 'error');
+        }
     }
 
     // Recibos
-    handleReceiptSubmit() {
+    async handleReceiptSubmit() {
         const form = document.getElementById('receiptForm');
         const formData = new FormData(form);
-        
         const receipt = {
-            id: Date.now(),
             name: formData.get('receiptName'),
             type: formData.get('receiptType'),
             amount: parseFloat(formData.get('receiptAmount')),
             date: formData.get('receiptDate'),
             notes: formData.get('receiptNotes'),
-            timestamp: Date.now()
+            user: this.currentUser // Envia o usuário logado
         };
-
-        this.addReceipt(receipt);
+        await this.addReceipt(receipt);
         this.closeModal('receiptModal');
-        this.showNotification('Recibo gerado com sucesso!', 'success');
     }
 
-    addReceipt(receipt) {
-        this.receipts.unshift(receipt);
-        this.saveData();
-        this.renderReceipts();
-        
-        // Imprimir recibo automaticamente após gerar
-        setTimeout(() => {
-            this.printReceipt(receipt.id);
-        }, 500);
+    async addReceipt(receipt) {
+        try {
+            const res = await fetch('http://localhost:3001/api/receipts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(receipt)
+            });
+            if (!res.ok) throw new Error('Error adding receipt');
+            const newReceipt = await res.json();
+            this.receipts.unshift(newReceipt);
+            this.renderReceipts();
+            this.showNotification('Recibo gerado com sucesso!', 'success');
+            // Imprimir recibo automaticamente após gerar
+            setTimeout(() => {
+                this.printReceipt(newReceipt.id);
+            }, 500);
+        } catch (err) {
+            this.showNotification('Erro ao registrar recibo', 'error');
+        }
     }
 
     // Renderização
     renderDashboard() {
         this.updateBalances();
         this.renderRecentTransactions();
+        this.renderDashboardChart();
+    }
+
+    renderDashboardChart() {
+        const container = document.getElementById('dashboardChart');
+        if (!container) return;
+        if (!this.transactions || this.transactions.length === 0) {
+            container.innerHTML = '<p>Nenhum dado para exibir</p>';
+            return;
+        }
+
+        // Agrupar transações por caixa
+        const caixaData = {};
+        Object.keys(CAIXAS).forEach(caixa => {
+            caixaData[caixa] = {
+                entradas: 0,
+                saidas: 0
+            };
+        });
+        this.transactions.forEach(transaction => {
+            const caixaKey = transaction.caixa && typeof transaction.caixa === 'object' ? transaction.caixa.key : transaction.caixa;
+            if (transaction.type === 'entrada') {
+                if (caixaKey && caixaData[caixaKey]) caixaData[caixaKey].entradas += transaction.amount;
+            } else if (transaction.type === 'saida') {
+                if (caixaKey && caixaData[caixaKey]) caixaData[caixaKey].saidas += transaction.amount;
+            }
+        });
+
+        // Calcular totais para pizza
+        const totais = Object.keys(caixaData).map(caixa => Math.max(0, caixaData[caixa].entradas - caixaData[caixa].saidas));
+        const totalGeral = totais.reduce((a, b) => a + b, 0);
+        if (totalGeral === 0) {
+            container.innerHTML = '<p>Nenhum dado para exibir</p>';
+            return;
+        }
+
+        // Tons de verde do mais escuro para o mais claro
+        const verdes = [
+            '#22c55e',
+            '#4ade80',
+            '#86efac',
+            '#bbf7d0',
+            '#dcfce7'
+        ];
+        // Ordenar do maior para o menor para melhor visual
+        const sorted = Object.entries(caixaData)
+            .map(([caixa, data]) => ({
+                key: caixa,
+                nome: CAIXAS[caixa],
+                valor: Math.max(0, data.entradas - data.saidas)
+            }))
+            .sort((a, b) => b.valor - a.valor);
+
+        // Gera os slices da pizza
+        let startAngle = 0;
+        let slices = '';
+        sorted.forEach((item, i) => {
+            if (item.valor === 0) return;
+            const angle = (item.valor / totalGeral) * 360;
+            const endAngle = startAngle + angle;
+            // Calcula coordenadas para arc
+            const largeArc = angle > 180 ? 1 : 0;
+            const r = 90;
+            const cx = 130, cy = 130;
+            const x1 = cx + r * Math.cos(Math.PI * startAngle / 180);
+            const y1 = cy + r * Math.sin(Math.PI * startAngle / 180);
+            const x2 = cx + r * Math.cos(Math.PI * endAngle / 180);
+            const y2 = cy + r * Math.sin(Math.PI * endAngle / 180);
+            const color = verdes[i % verdes.length];
+            slices += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}" stroke="#fff" stroke-width="2" />`;
+            startAngle += angle;
+        });
+
+        // Legenda
+        let legend = '';
+        sorted.forEach((item, i) => {
+            if (item.valor === 0) return;
+            legend += `<div style="display:flex;align-items:center;margin-bottom:4px;"><span style="display:inline-block;width:16px;height:16px;background:${verdes[i % verdes.length]};margin-right:8px;border-radius:3px;"></span>${item.nome}: <b style="margin-left:4px;">${this.formatCurrency(item.valor)}</b></div>`;
+        });
+
+        container.innerHTML = `
+            <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:32px;">
+                <svg width="260" height="260" viewBox="0 0 260 260">${slices}</svg>
+                <div style="min-width:120px;">${legend}</div>
+            </div>
+        `;
     }
 
     updateBalances() {
@@ -656,14 +597,23 @@ class ChurchFinanceApp {
         };
 
         this.transactions.forEach(transaction => {
+            // Pega a key do caixa corretamente
+            const caixaKey = transaction.caixa && typeof transaction.caixa === 'object' ? transaction.caixa.key : transaction.caixa;
+            const transferToKey = transaction.transferTo && typeof transaction.transferTo === 'object' ? transaction.transferTo.key : transaction.transferTo;
             if (transaction.type === 'entrada') {
-                this.balances[transaction.caixa] += transaction.amount;
+                if (caixaKey && this.balances.hasOwnProperty(caixaKey)) {
+                    this.balances[caixaKey] += transaction.amount;
+                }
             } else if (transaction.type === 'saida') {
-                this.balances[transaction.caixa] -= transaction.amount;
+                if (caixaKey && this.balances.hasOwnProperty(caixaKey)) {
+                    this.balances[caixaKey] -= transaction.amount;
+                }
             } else if (transaction.type === 'transferencia') {
-                this.balances[transaction.caixa] -= transaction.amount;
-                if (transaction.transferTo) {
-                    this.balances[transaction.transferTo] += transaction.amount;
+                if (caixaKey && this.balances.hasOwnProperty(caixaKey)) {
+                    this.balances[caixaKey] -= transaction.amount;
+                }
+                if (transferToKey && this.balances.hasOwnProperty(transferToKey)) {
+                    this.balances[transferToKey] += transaction.amount;
                 }
             }
         });
@@ -693,18 +643,16 @@ class ChurchFinanceApp {
     filterTransactions() {
         const typeFilter = document.getElementById('filterType').value;
         const caixaFilter = document.getElementById('filterCaixa').value;
-        const dateFilter = document.getElementById('filterDate').value;
 
         let filteredTransactions = this.transactions;
 
-        if (typeFilter) {
+        // Se typeFilter for vazio ou 'todos', não filtra por tipo
+        if (typeFilter && typeFilter !== 'todos') {
             filteredTransactions = filteredTransactions.filter(t => t.type === typeFilter);
         }
-        if (caixaFilter) {
+        // Se caixaFilter for vazio ou 'todos', não filtra por caixa
+        if (caixaFilter && caixaFilter !== 'todos') {
             filteredTransactions = filteredTransactions.filter(t => t.caixa === caixaFilter);
-        }
-        if (dateFilter) {
-            filteredTransactions = filteredTransactions.filter(t => t.date === dateFilter);
         }
 
         this.renderTransactionsList(filteredTransactions);
@@ -734,9 +682,24 @@ class ChurchFinanceApp {
         const amountClass = transaction.type === 'entrada' ? 'positive' : 'negative';
         const amountPrefix = transaction.type === 'entrada' ? '+' : '-';
 
+        // Nome do caixa
+        let caixaNome = '';
+        if (transaction.caixa && typeof transaction.caixa === 'object') {
+            caixaNome = transaction.caixa.name || CAIXAS[transaction.caixa.key] || CAIXAS[transaction.caixa.id] || '';
+        } else {
+            caixaNome = CAIXAS[transaction.caixa] || '';
+        }
+        let transferNome = '';
+        if (transaction.type === 'transferencia' && transaction.transferTo) {
+            if (typeof transaction.transferTo === 'object') {
+                transferNome = transaction.transferTo.name || CAIXAS[transaction.transferTo.key] || CAIXAS[transaction.transferTo.id] || '';
+            } else {
+                transferNome = CAIXAS[transaction.transferTo] || '';
+            }
+        }
         let transferInfo = '';
         if (transaction.type === 'transferencia' && transaction.transferTo) {
-            transferInfo = `<div class="transaction-transfer">→ ${CAIXAS[transaction.transferTo]}</div>`;
+            transferInfo = `<div class="transaction-transfer">→ ${transferNome}</div>`;
         }
 
         return `
@@ -751,7 +714,7 @@ class ChurchFinanceApp {
                     </div>
                 </div>
                 <div class="transaction-details">
-                    <span class="transaction-caixa">${CAIXAS[transaction.caixa]}</span>
+                    <span class="transaction-caixa">${caixaNome}</span>
                     <span>${this.formatDate(transaction.date)}</span>
                 </div>
                 ${transferInfo}
@@ -843,85 +806,48 @@ class ChurchFinanceApp {
         }
 
         let filteredTransactions = this.transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date + 'T00:00:00');
+            const transactionDate = new Date(transaction.date);
             return transactionDate >= startDate && transactionDate <= endDate;
         });
 
         if (caixaFilter && caixaFilter !== 'todos') {
-            filteredTransactions = filteredTransactions.filter(t => t.caixa === caixaFilter);
+            filteredTransactions = filteredTransactions.filter(t => {
+                if (t.caixa && typeof t.caixa === 'object') {
+                    return t.caixa.key === caixaFilter;
+                }
+                return t.caixa === caixaFilter;
+            });
         }
         // Permitir também o valor vazio como "todos"
         if (typeFilter && typeFilter !== 'todos') {
             filteredTransactions = filteredTransactions.filter(t => t.type === typeFilter);
         }
 
-        const totalEntradas = filteredTransactions
-            .filter(t => t.type === 'entrada')
-            .reduce((sum, t) => sum + t.amount, 0);
+        this.renderReportsTable(filteredTransactions);
+    }
 
-        const totalSaidas = filteredTransactions
-            .filter(t => t.type === 'saida')
-            .reduce((sum, t) => sum + t.amount, 0);
-
-        const saldo = totalEntradas - totalSaidas;
-
-        document.getElementById('totalEntradas').textContent = this.formatCurrency(totalEntradas);
-        document.getElementById('totalSaidas').textContent = this.formatCurrency(totalSaidas);
-        document.getElementById('saldoTotal').textContent = this.formatCurrency(saldo);
-    this.renderReportsChart(filteredTransactions);
-    this.renderReportsTable(filteredTransactions);
-}
-
-renderReportsTable(transactions) {
-        const container = document.getElementById('reportsTableContainer');
+    renderReportsTable(transactions) {
+        var container = document.getElementById('reportsTableContainer');
         if (!container) return;
         if (!transactions || transactions.length === 0) {
             container.innerHTML = '<p class="no-data">Nenhuma transação encontrada para o período/caixa/tipo selecionado.</p>';
             return;
         }
-        // Cabeçalho com dados da igreja
-        const churchData = this.churchData || {};
-        const headerHtml = `
-            <div style="text-align:center;margin-bottom:10px;">
-                <div style="font-size:1.1em;font-weight:bold;">${churchData.name || 'Igreja'}</div>
-                <div style="font-size:0.95em;">${churchData.address || ''}</div>
-                <div style="font-size:0.95em;">${churchData.phone || ''} ${churchData.email ? ' | ' + churchData.email : ''}</div>
-                <div style="font-size:0.95em;">${churchData.cnpj ? 'CNPJ: ' + churchData.cnpj : ''}</div>
-            </div>
-        `;
-        // Tabela estilo extrato bancário
-        const tableHtml = `
-            <div class=\"extrato-table-wrapper\">
-            <table class=\"extrato-table\">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Descrição</th>
-                        <th>Valor</th>
-                        <th>Tipo</th>
-                        <th>Caixa</th>
-                        <th>Transferência</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${transactions.map(t => `
-                        <tr>
-                            <td>${this.formatDate(t.date)}</td>
-                            <td>${t.description}</td>
-                            <td class=\"extrato-valor ${t.type}\">${this.formatCurrency(t.amount)}</td>
-                            <td>${t.type.charAt(0).toUpperCase() + t.type.slice(1)}</td>
-                            <td>${CAIXAS[t.caixa]}</td>
-                            <td>${t.transferTo ? CAIXAS[t.transferTo] : ''}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            </div>
-        `;
-        // Botão de impressão
-        const printBtn = `<button class="btn-primary" style="margin-bottom:10px;" onclick="app.printReportsTable()"><i class='fas fa-print'></i> Imprimir Extrato</button>`;
-        container.innerHTML = printBtn + headerHtml + tableHtml;
-}
+        var tableHtml = '';
+        tableHtml += '<div class="extrato-table-wrapper">';
+        tableHtml += '<table class="extrato-table">';
+        tableHtml += '<thead><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>';
+        for (var i = 0; i < transactions.length; i++) {
+            var t = transactions[i];
+            tableHtml += '<tr>';
+            tableHtml += '<td>' + this.formatDate(t.date) + '</td>';
+            tableHtml += '<td>' + t.description + '</td>';
+            tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
+            tableHtml += '</tr>';
+        }
+        tableHtml += '</tbody></table></div>';
+        container.innerHTML = tableHtml;
+    }
 
 printReportsTable() {
         const container = document.getElementById('reportsTableContainer');
@@ -1224,8 +1150,13 @@ printReportsTable() {
     }
 
     formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR');
+    // Ajusta para UTC-3 (Brasília)
+    const date = new Date(dateString);
+    // Corrige para UTC-3 manualmente
+    const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+    // UTC-3 = -180 minutos
+    const brt = new Date(utc - (3 * 60 * 60000));
+    return brt.toLocaleDateString('pt-BR');
     }
 
     showNotification(message, type = 'info') {
@@ -1373,6 +1304,28 @@ printReportsTable() {
         const churchEmail = this.churchData.email || '';
         const churchCnpj = this.churchData.cnpj || '';
 
+        // Cores padrão (entrada)
+        let gradMain = 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)';
+        let gradBorder = 'linear-gradient(90deg, #22c55e 0%, #15803d 100%)';
+        let gradAmount = 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)';
+        let borderAmount = '#bbf7d0';
+        let amountColor = '#15803d';
+        let labelColor = '#166534';
+        let badgeGrad = 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)';
+        let titleColor = '#22c55e';
+        let watermarkColor = 'rgba(34, 197, 94, 0.03)';
+        // Se for saída, muda para vermelho
+        if (receipt.type === 'saida') {
+            gradMain = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
+            gradBorder = 'linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)';
+            gradAmount = 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)';
+            borderAmount = '#fecaca';
+            amountColor = '#b91c1c';
+            labelColor = '#991b1b';
+            badgeGrad = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)';
+            titleColor = '#ef4444';
+            watermarkColor = 'rgba(239, 68, 68, 0.04)';
+        }
         return `
             <!DOCTYPE html>
             <html lang="pt-BR">
@@ -1384,52 +1337,48 @@ printReportsTable() {
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
                     
-                                         @media print {
-                         body { 
-                             margin: 0; 
-                             padding: 0; 
-                             background: white !important;
-                             min-height: auto;
-                         }
-                         .no-print { display: none !important; }
-                         .receipt-container { 
-                             box-shadow: none; 
-                             margin: 0;
-                             border-radius: 0;
-                             max-width: none;
-                         }
-                         .receipt-header {
-                             border-radius: 0;
-                         }
-                         .receipt-body {
-                             padding: 30px 20px;
-                         }
-                     }
-                    
+                    @media print {
+                        body { 
+                            margin: 0; 
+                            padding: 0; 
+                            background: white !important;
+                            min-height: auto;
+                        }
+                        .no-print { display: none !important; }
+                        .receipt-container { 
+                            box-shadow: none; 
+                            margin: 0;
+                            border-radius: 0;
+                            max-width: none;
+                        }
+                        .receipt-header {
+                            border-radius: 0;
+                        }
+                        .receipt-body {
+                            padding: 30px 20px;
+                        }
+                    }
                     * {
                         margin: 0;
                         padding: 0;
                         box-sizing: border-box;
                     }
-                    
-                                         body {
-                         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                         line-height: 1.6;
-                         color: #1a202c;
-                         background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-                         margin: 0;
-                         padding: 20px;
-                         min-height: 100vh;
-                     }
-                     
-                     @media print {
-                         body {
-                             background: white !important;
-                             padding: 0;
-                             min-height: auto;
-                         }
-                     }
-                    
+                    body {
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        line-height: 1.6;
+                        color: #1a202c;
+                        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+                        margin: 0;
+                        padding: 20px;
+                        min-height: 100vh;
+                    }
+                    @media print {
+                        body {
+                            background: white !important;
+                            padding: 0;
+                            min-height: auto;
+                        }
+                    }
                     .receipt-container {
                         max-width: 700px;
                         margin: 0 auto;
@@ -1439,9 +1388,8 @@ printReportsTable() {
                         overflow: hidden;
                         position: relative;
                     }
-                    
                     .receipt-header {
-                        background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+                        background: ${gradMain};
                         color: white;
                         padding: 40px 30px 30px;
                         text-align: center;
@@ -1505,10 +1453,9 @@ printReportsTable() {
                         font-weight: 700;
                         text-align: center;
                         margin-bottom: 40px;
-                        color: #22c55e;
+                        color: ${titleColor};
                         position: relative;
                     }
-                    
                     .receipt-title::after {
                         content: '';
                         position: absolute;
@@ -1517,7 +1464,7 @@ printReportsTable() {
                         transform: translateX(-50%);
                         width: 60px;
                         height: 3px;
-                        background: linear-gradient(90deg, #22c55e 0%, #15803d 100%);
+                        background: ${gradBorder};
                         border-radius: 2px;
                     }
                     
@@ -1532,13 +1479,12 @@ printReportsTable() {
                         text-align: center;
                         margin: 40px 0;
                         padding: 30px;
-                        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+                        background: ${gradAmount};
                         border-radius: 16px;
-                        border: 2px solid #bbf7d0;
+                        border: 2px solid ${borderAmount};
                         position: relative;
                         overflow: hidden;
                     }
-                    
                     .receipt-amount-container::before {
                         content: '';
                         position: absolute;
@@ -1546,22 +1492,20 @@ printReportsTable() {
                         left: 0;
                         right: 0;
                         height: 4px;
-                        background: linear-gradient(90deg, #22c55e 0%, #15803d 100%);
+                        background: ${gradBorder};
                     }
-                    
                     .receipt-amount-label {
                         font-size: 16px;
-                        color: #166534;
+                        color: ${labelColor};
                         font-weight: 600;
                         margin-bottom: 10px;
                         text-transform: uppercase;
                         letter-spacing: 1px;
                     }
-                    
                     .receipt-amount {
                         font-size: 36px;
                         font-weight: 700;
-                        color: #15803d;
+                        color: ${amountColor};
                         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                     }
                     
@@ -1634,7 +1578,7 @@ printReportsTable() {
                     
                     .receipt-type-badge {
                         display: inline-block;
-                        background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+                        background: ${badgeGrad};
                         color: white;
                         padding: 6px 16px;
                         border-radius: 20px;
@@ -1687,7 +1631,7 @@ printReportsTable() {
                         left: 50%;
                         transform: translate(-50%, -50%) rotate(-45deg);
                         font-size: 120px;
-                        color: rgba(34, 197, 94, 0.03);
+                        color: ${watermarkColor};
                         font-weight: 900;
                         pointer-events: none;
                         z-index: 0;
@@ -1732,7 +1676,7 @@ printReportsTable() {
                         </div>
                         
                         <div class="receipt-content">
-                            Referente a: <span class="receipt-type-badge">${this.getReceiptTypeLabel(receipt.type)}</span>
+                            Referente a: <span class="receipt-type-badge">${receipt.notes || receipt.description || '-'}</span>
                         </div>
                         
                         <div class="receipt-details">
@@ -1764,53 +1708,4 @@ printReportsTable() {
             </html>
         `;
     }
-
-    getReceiptTypeLabel(type) {
-        const typeLabels = {
-            'carnê': 'Carnê de Missões',
-            'oferta': 'Oferta de Culto',
-            'escola': 'Oferta Escola Bíblica',
-            'outro': 'Outro'
-        };
-        return typeLabels[type] || type;
-    }
 }
-
-// Adicionar estilos CSS para animações de notificação
-const notificationStyles = document.createElement('style');
-notificationStyles.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-    
-    .no-data {
-        text-align: center;
-        color: #a0aec0;
-        font-style: italic;
-        padding: 40px 20px;
-    }
-`;
-document.head.appendChild(notificationStyles);
-
-// Inicializar aplicação quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new ChurchFinanceApp();
-});

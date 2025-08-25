@@ -354,9 +354,7 @@ body {
     transition: var(--transition);
 }
 
-.user-menu:hover {
-    background: var(--bg-tertiary);
-}
+
 
 .user-menu span {
     font-weight: 500;
@@ -380,13 +378,16 @@ body {
     visibility: hidden;
     transform: translateY(-10px);
     transition: var(--transition);
+    pointer-events: none;
 }
-
-.user-menu:hover .user-dropdown {
+.user-menu.open .user-dropdown {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+    pointer-events: auto;
 }
+
+
 
 .user-dropdown button {
     width: 100%;
