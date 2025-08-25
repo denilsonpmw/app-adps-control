@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro - Igreja</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="loginScreen" class="screen active">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <i class="fas fa-church"></i>
+                    <h1>Controle Financeiro</h1>
+                    <p>Igreja</p>
+                </div>
+                <form id="loginForm" class="login-form">
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <select id="userSelect" required>
+                            <option value="">Selecione o usuário</option>
+                            <option value="admin">Administrador</option>
+                            <option value="tesoureiro">Tesoureiro</option>
+                            <option value="secretario">Secretário</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="Senha (qualquer senha)" required>
+                    </div>
+                    <button type="submit" class="login-btn">
+                        <span>Entrar</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+                <div class="demo-info">
+                    <p><i class="fas fa-info-circle"></i> Sistema de demonstração - Qualquer senha funciona</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aplicação Principal -->
+    <div id="mainApp" class="screen">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h2><i class="fas fa-church"></i> Controle Financeiro</h2>
+                </div>
+                                 <div class="header-right">
+                     <div class="user-menu">
+                         <span id="currentUser">Usuário</span>
+                         <i class="fas fa-user-circle"></i>
+                         <div class="user-dropdown">
+                             <button id="logoutBtn">
+                                 <i class="fas fa-sign-out-alt"></i> Sair
+                             </button>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+        </header>
+
+        <!-- Navegação -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-page="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-tab" data-page="transactions">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Transações</span>
+            </button>
+            <button class="nav-tab" data-page="receipts">
+                <i class="fas fa-receipt"></i>
+                <span>Recibos</span>
+            </button>
+                         <button class="nav-tab" data-page="reports">
+                 <i class="fas fa-chart-bar"></i>
+                 <span>Relatórios</span>
+             </button>
+             <button class="nav-tab" data-page="settings">
+                 <i class="fas fa-cog"></i>
+                 <span>Configurações</span>
+             </button>
+         </nav>
+
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+            <!-- Dashboard -->
+            <div id="dashboard" class="page active">
+                <div class="page-header">
+                    <h3>Dashboard</h3>
+                    <p>Visão geral dos caixas e transações recentes</p>
+                </div>
+                
+                <div class="cards-grid">
+                    <div class="card balance-card">
+                        <div class="card-header">
+                            <h4>Escola Bíblica</h4>
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div class="card-amount" id="balance-escola">
+                            R$ 0,00
+                        </div>
+                        <div class="card-footer">
+                            <span class="trend positive">
+                                <i class="fas fa-arrow-up"></i> +12% este mês
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="card balance-card">
+                        <div class="card-header">
+                            <h4>Missões</h4>
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="card-amount" id="balance-missoes">
+                            R$ 0,00
+                        </div>
+                        <div class="card-footer">
+                            <span class="trend positive">
+                                <i class="fas fa-arrow-up"></i> +8% este mês
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="card balance-card">
+                        <div class="card-header">
+                            <h4>Missões do Campo</h4>
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="card-amount" id="balance-campo">
+                            R$ 0,00
+                        </div>
+                        <div class="card-footer">
+                            <span class="trend positive">
+                                <i class="fas fa-arrow-up"></i> +15% este mês
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="card balance-card">
+                        <div class="card-header">
+                            <h4>Geral</h4>
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="card-amount" id="balance-geral">
+                            R$ 0,00
+                        </div>
+                        <div class="card-footer">
+                            <span class="trend positive">
+                                <i class="fas fa-arrow-up"></i> +10% este mês
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-transactions">
+                    <h4>Transações Recentes</h4>
+                    <div id="recentTransactionsList" class="transactions-list">
+                        <!-- Transações serão carregadas aqui -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transações -->
+            <div id="transactions" class="page">
+                <div class="page-header">
+                    <h3>Transações</h3>
+                    <button class="btn-primary" id="newTransactionBtn">
+                        <i class="fas fa-plus"></i> Nova Transação
+                    </button>
+                </div>
+
+                <div class="transactions-filters">
+                    <div class="filter-group">
+                        <select id="filterType">
+                            <option value="">Todos os tipos</option>
+                            <option value="entrada">Entrada</option>
+                            <option value="saida">Saída</option>
+                            <option value="transferencia">Transferência</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <select id="filterCaixa">
+                            <option value="">Todos os caixas</option>
+                            <option value="escola">Escola Bíblica</option>
+                            <option value="missoes">Missões</option>
+                            <option value="campo">Missões do Campo</option>
+                            <option value="geral">Geral</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="date" id="filterDate">
+                    </div>
+                </div>
+
+                <div id="transactionsList" class="transactions-list">
+                    <!-- Transações serão carregadas aqui -->
+                </div>
+            </div>
+
+            <!-- Recibos -->
+            <div id="receipts" class="page">
+                <div class="page-header">
+                    <h3>Recibos</h3>
+                    <button class="btn-primary" id="newReceiptBtn">
+                        <i class="fas fa-plus"></i> Novo Recibo
+                    </button>
+                </div>
+
+                <div id="receiptsList" class="receipts-list">
+                    <!-- Recibos serão carregados aqui -->
+                </div>
+            </div>
+
+            <!-- Relatórios -->
+            <div id="reports" class="page">
+                <div class="page-header">
+                    <h3>Relatórios</h3>
+                    <button class="btn-secondary" id="exportCsvBtn">
+                        <i class="fas fa-download"></i> Exportar CSV
+                    </button>
+                </div>
+
+                <div class="reports-filters">
+                    <div class="filter-group">
+                        <label>Período:</label>
+                        <select id="reportPeriod">
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="30" selected>Últimos 30 dias</option>
+                            <option value="90">Últimos 90 dias</option>
+                            <option value="365">Último ano</option>
+                            <option value="personalizado">Personalizado</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" id="customDateGroup" style="display: none;">
+                        <label>Data Início:</label>
+                        <input type="date" id="reportDateStart">
+                    </div>
+                    <div class="filter-group" id="customDateGroup2" style="display: none;">
+                        <label>Data Fim:</label>
+                        <input type="date" id="reportDateEnd">
+                    </div>
+                    <div class="filter-group">
+                        <label>Caixa:</label>
+                        <select id="reportCaixa">
+                            <option value="">Todos</option>
+                            <option value="escola">Escola Bíblica</option>
+                            <option value="missoes">Missões</option>
+                            <option value="campo">Missões do Campo</option>
+                            <option value="geral">Geral</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Tipo:</label>
+                        <select id="reportType">
+                            <option value="">Todos</option>
+                            <option value="entrada">Entradas</option>
+                            <option value="saida">Saídas</option>
+                            <option value="transferencia">Transferências</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="reports-summary">
+                    <div class="summary-card">
+                        <h4>Total de Entradas</h4>
+                        <div class="summary-amount positive" id="totalEntradas">R$ 0,00</div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Total de Saídas</h4>
+                        <div class="summary-amount negative" id="totalSaidas">R$ 0,00</div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Saldo</h4>
+                        <div class="summary-amount" id="saldoTotal">R$ 0,00</div>
+                    </div>
+                </div>
+
+                                 <div id="reportsChart" class="reports-chart">
+                     <!-- Gráfico será renderizado aqui -->
+                 </div>
+             </div>
+
+             <!-- Configurações -->
+             <div id="settings" class="page">
+                 <div class="page-header">
+                     <h3>Configurações</h3>
+                     <p>Configure os dados da igreja e preferências do sistema</p>
+                 </div>
+
+                 <div class="settings-container">
+                     <div class="settings-section">
+                         <h4><i class="fas fa-church"></i> Dados da Igreja</h4>
+                         <form id="churchDataForm" class="settings-form">
+                             <div class="form-group">
+                                 <label>Nome da Igreja</label>
+                                 <input type="text" id="churchName" placeholder="Nome da sua igreja">
+                             </div>
+                             <div class="form-group">
+                                 <label>Endereço</label>
+                                 <input type="text" id="churchAddress" placeholder="Endereço completo">
+                             </div>
+                             <div class="form-group">
+                                 <label>Telefone</label>
+                                 <input type="tel" id="churchPhone" placeholder="(00) 00000-0000">
+                             </div>
+                             <div class="form-group">
+                                 <label>Email</label>
+                                 <input type="email" id="churchEmail" placeholder="email@igreja.com">
+                             </div>
+                             <div class="form-group">
+                                 <label>CNPJ (opcional)</label>
+                                 <input type="text" id="churchCnpj" placeholder="00.000.000/0000-00">
+                             </div>
+                             <button type="submit" class="btn-primary">
+                                 <i class="fas fa-save"></i> Salvar Dados
+                             </button>
+                         </form>
+                     </div>
+
+                     <div class="settings-section">
+                         <h4><i class="fas fa-image"></i> Logo da Igreja</h4>
+                         <div class="logo-upload-container">
+                             <div class="logo-preview" id="logoPreview">
+                                 <i class="fas fa-church"></i>
+                                 <span>Nenhuma logo selecionada</span>
+                             </div>
+                             <div class="logo-upload-controls">
+                                 <input type="file" id="logoUpload" accept="image/*" style="display: none;">
+                                 <button type="button" class="btn-secondary" id="selectLogoBtn">
+                                     <i class="fas fa-upload"></i> Selecionar Logo
+                                 </button>
+                                 <button type="button" class="btn-secondary" id="removeLogoBtn" style="display: none;">
+                                     <i class="fas fa-trash"></i> Remover Logo
+                                 </button>
+                             </div>
+                             <p class="logo-info">A logo será usada nos recibos e relatórios. Tamanho recomendado: 200x200px</p>
+                         </div>
+                     </div>
+
+                     <div class="settings-section">
+                         <h4><i class="fas fa-palette"></i> Aparência</h4>
+                         <div class="theme-settings">
+                             <div class="form-group">
+                                 <label>Tema do Sistema</label>
+                                 <div class="theme-options">
+                                     <label class="theme-option">
+                                         <input type="radio" name="theme" value="light" id="themeLight">
+                                         <div class="theme-preview light">
+                                             <div class="preview-header"></div>
+                                             <div class="preview-content"></div>
+                                         </div>
+                                         <span>Claro</span>
+                                     </label>
+                                     <label class="theme-option">
+                                         <input type="radio" name="theme" value="dark" id="themeDark">
+                                         <div class="theme-preview dark">
+                                             <div class="preview-header"></div>
+                                             <div class="preview-content"></div>
+                                         </div>
+                                         <span>Escuro</span>
+                                     </label>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+         </main>
+     </div>
+
+    <!-- Modal Nova Transação -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Transação</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="transactionForm">
+                <div class="form-group">
+                    <label>Tipo de Transação</label>
+                    <select id="transactionType" required>
+                        <option value="">Selecione o tipo</option>
+                        <option value="entrada">Entrada</option>
+                        <option value="saida">Saída</option>
+                        <option value="transferencia">Transferência</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Caixa</label>
+                    <select id="transactionCaixa" required>
+                        <option value="">Selecione o caixa</option>
+                        <option value="escola">Escola Bíblica</option>
+                        <option value="missoes">Missões</option>
+                        <option value="campo">Missões do Campo</option>
+                        <option value="geral">Geral</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="transferToGroup" style="display: none;">
+                    <label>Transferir para</label>
+                    <select id="transferToCaixa">
+                        <option value="">Selecione o caixa destino</option>
+                        <option value="escola">Escola Bíblica</option>
+                        <option value="missoes">Missões</option>
+                        <option value="campo">Missões do Campo</option>
+                        <option value="geral">Geral</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <input type="text" id="transactionDescription" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" id="transactionAmount" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="transactionDate" required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelTransaction">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Novo Recibo -->
+    <div id="receiptModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Novo Recibo</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="receiptForm">
+                <div class="form-group">
+                    <label>Nome do Ofertante</label>
+                    <input type="text" id="receiptName" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Oferta</label>
+                    <select id="receiptType" required>
+                        <option value="">Selecione o tipo</option>
+                        <option value="carnê">Carnê de Missões</option>
+                        <option value="oferta">Oferta de Culto</option>
+                        <option value="escola">Oferta Escola Bíblica</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" id="receiptAmount" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="receiptDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="receiptNotes" rows="3"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelReceipt">Cancelar</button>
+                    <button type="submit" class="btn-primary">Gerar Recibo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
