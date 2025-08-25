@@ -868,10 +868,88 @@ class ChurchFinanceApp {
         document.getElementById('totalEntradas').textContent = this.formatCurrency(totalEntradas);
         document.getElementById('totalSaidas').textContent = this.formatCurrency(totalSaidas);
         document.getElementById('saldoTotal').textContent = this.formatCurrency(saldo);
+    this.renderReportsChart(filteredTransactions);
+    this.renderReportsTable(filteredTransactions);
+}
 
-        this.renderReportsChart(filteredTransactions);
+renderReportsTable(transactions) {
+        const container = document.getElementById('reportsTableContainer');
+        if (!container) return;
+        if (!transactions || transactions.length === 0) {
+            container.innerHTML = '<p class="no-data">Nenhuma transação encontrada para o período/caixa/tipo selecionado.</p>';
+            return;
+        }
+        // Cabeçalho com dados da igreja
+        const churchData = this.churchData || {};
+        const headerHtml = `
+            <div style="text-align:center;margin-bottom:10px;">
+                <div style="font-size:1.1em;font-weight:bold;">${churchData.name || 'Igreja'}</div>
+                <div style="font-size:0.95em;">${churchData.address || ''}</div>
+                <div style="font-size:0.95em;">${churchData.phone || ''} ${churchData.email ? ' | ' + churchData.email : ''}</div>
+                <div style="font-size:0.95em;">${churchData.cnpj ? 'CNPJ: ' + churchData.cnpj : ''}</div>
+            </div>
+        `;
+        // Tabela estilo extrato bancário
+        const tableHtml = `
+            <div class=\"extrato-table-wrapper\">
+            <table class=\"extrato-table\">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Tipo</th>
+                        <th>Caixa</th>
+                        <th>Transferência</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${transactions.map(t => `
+                        <tr>
+                            <td>${this.formatDate(t.date)}</td>
+                            <td>${t.description}</td>
+                            <td class=\"extrato-valor ${t.type}\">${this.formatCurrency(t.amount)}</td>
+                            <td>${t.type.charAt(0).toUpperCase() + t.type.slice(1)}</td>
+                            <td>${CAIXAS[t.caixa]}</td>
+                            <td>${t.transferTo ? CAIXAS[t.transferTo] : ''}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            </div>
+        `;
+        // Botão de impressão
+        const printBtn = `<button class="btn-primary" style="margin-bottom:10px;" onclick="app.printReportsTable()"><i class='fas fa-print'></i> Imprimir Extrato</button>`;
+        container.innerHTML = printBtn + headerHtml + tableHtml;
+}
+
+printReportsTable() {
+        const container = document.getElementById('reportsTableContainer');
+        if (!container) return;
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Relatório de Transações</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 30px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+                    th, td { border: 1px solid #ccc; padding: 6px 8px; }
+                    th { background: #14532d; color: #fff; }
+                    tr:nth-child(even) { background: #f1f5f9; }
+                    tr:nth-child(odd) { background: #fff; }
+                    h2 { margin-bottom: 0; }
+                </style>
+            </head>
+            <body>
+                ${container.innerHTML}
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 300);
     }
-
     renderReportsChart(transactions) {
         const container = document.getElementById('reportsChart');
         if (transactions.length === 0) {
