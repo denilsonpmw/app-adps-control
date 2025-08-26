@@ -97,48 +97,7 @@
                     <h3>Dashboard</h3>
                     <p>Visão geral dos caixas e transações recentes</p>
                 </div>
-                <div class="cards-grid">
-                    <div class="card balance-card">
-                        <div class="card-header">
-                            <h4>Escola Bíblica</h4>
-                            <i class="fas fa-graduation-cap"></i>
-                        </div>
-                        <div class="card-amount" id="balance-escola">R$ 0,00</div>
-                        <div class="card-footer">
-                            <span class="trend positive"><i class="fas fa-arrow-up"></i> +12% este mês</span>
-                        </div>
-                    </div>
-                    <div class="card balance-card">
-                        <div class="card-header">
-                            <h4>Missões</h4>
-                            <i class="fas fa-globe"></i>
-                        </div>
-                        <div class="card-amount" id="balance-missoes">R$ 0,00</div>
-                        <div class="card-footer">
-                            <span class="trend positive"><i class="fas fa-arrow-up"></i> +8% este mês</span>
-                        </div>
-                    </div>
-                    <div class="card balance-card">
-                        <div class="card-header">
-                            <h4>Missões do Campo</h4>
-                            <i class="fas fa-map-marker-alt"></i>
-                        </div>
-                        <div class="card-amount" id="balance-campo">R$ 0,00</div>
-                        <div class="card-footer">
-                            <span class="trend positive"><i class="fas fa-arrow-up"></i> +15% este mês</span>
-                        </div>
-                    </div>
-                    <div class="card balance-card">
-                        <div class="card-header">
-                            <h4>Geral</h4>
-                            <i class="fas fa-wallet"></i>
-                        </div>
-                        <div class="card-amount" id="balance-geral">R$ 0,00</div>
-                        <div class="card-footer">
-                            <span class="trend positive"><i class="fas fa-arrow-up"></i> +10% este mês</span>
-                        </div>
-                    </div>
-                </div>
+                <div class="cards-grid" id="dashboardCards"></div>
                 <div id="dashboardChart" class="dashboard-chart card" style="margin:32px 0 24px 0;"></div>
                 <div id="dashboardLegend" class="dashboard-legend-card card" style="margin:0 auto 24px auto;max-width:320px;display:none;"></div>
                 <div class="recent-transactions">
@@ -200,9 +159,6 @@
             <div id="reports" class="page">
                 <div class="page-header">
                     <h3>Relatórios</h3>
-                    <button class="btn-secondary" id="exportCsvBtn">
-                        <i class="fas fa-download"></i> Exportar CSV
-                    </button>
                 </div>
 
                 <div class="reports-filters">
@@ -245,10 +201,12 @@
                     </div>
                 </div>
 
-                <div class="reports-summary">
+                <div class="reports-summary"></div>
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:8px 0 0 0;">
+                    <button class="btn-secondary" id="printReportsBtn"><i class="fas fa-print"></i> Imprimir Tabela</button>
+                    <button class="btn-secondary" id="exportCsvBtn"><i class="fas fa-file-csv"></i> Exportar CSV</button>
                 </div>
-
-                 <div id="reportsLegend" class="reports-legend-card card" style="margin-top:16px;display:none;"></div>
+                <div id="reportsLegend" class="reports-legend-card card" style="margin-top:16px;display:none;"></div>
                 <div id="reportsTableContainer" class="reports-table-container card" style="margin-top:16px;"></div>
              </div>
 

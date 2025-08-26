@@ -233,7 +233,17 @@ class ChurchFinanceApp {
     document.getElementById('filterCaixa').addEventListener('change', () => this.filterTransactions());
 
         // Relatórios
-        document.getElementById('exportCsvBtn').addEventListener('click', () => this.exportToCSV());
+        // Garante que só o botão ao lado do imprimir tabela exporta CSV
+        setTimeout(() => {
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            if (exportCsvBtn) {
+                exportCsvBtn.onclick = () => this.exportToCSV();
+            }
+            const printReportsBtn = document.getElementById('printReportsBtn');
+            if (printReportsBtn) {
+                printReportsBtn.onclick = () => this.printReportsTable();
+            }
+        }, 0);
         document.getElementById('reportPeriod').addEventListener('change', (e) => this.handleReportPeriodChange(e));
         document.getElementById('reportDateStart').addEventListener('change', () => this.updateReports());
         document.getElementById('reportDateEnd').addEventListener('change', () => this.updateReports());
@@ -524,10 +534,89 @@ class ChurchFinanceApp {
     }
 
     // Renderização
-    renderDashboard() {
-        this.updateBalances();
+    async renderDashboard() {
+        await this.updateBalances();
+        this.renderDashboardCards();
         this.renderRecentTransactions();
         this.renderDashboardChart();
+    }
+
+    // Renderiza os cards do dashboard dinamicamente
+    renderDashboardCards() {
+        const cardsGrid = document.getElementById('dashboardCards');
+        if (!cardsGrid) return;
+        cardsGrid.innerHTML = '';
+        // Ícones padrão para alguns nomes conhecidos
+        const iconMap = {
+            escola: 'fa-graduation-cap',
+            missoes: 'fa-globe',
+            campo: 'fa-map-marker-alt',
+            geral: 'fa-wallet',
+        };
+        // Para cada caixa, renderiza um card
+        Object.entries(this.caixas).forEach(([key, name]) => {
+            // Saldo atual
+            const saldo = this.balances[key] || 0;
+            // Percentual de variação neste mês
+            const percent = this.getCaixaPercentThisMonth(key);
+            // Ícone
+            const icon = iconMap[key] || 'fa-cash-register';
+            // Cor do percentual
+            const trendClass = percent >= 0 ? 'trend positive' : 'trend negative';
+            const trendIcon = percent >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+            const percentText = percent === null ? '--' : `${percent > 0 ? '+' : ''}${percent}% este mês`;
+            cardsGrid.innerHTML += `
+                <div class="card balance-card">
+                    <div class="card-header">
+                        <h4>${name}</h4>
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="card-amount" id="balance-${key}">${this.formatCurrency(saldo)}</div>
+                    <div class="card-footer">
+                        <span class="${trendClass}"><i class="fas ${trendIcon}"></i> ${percentText}</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // Calcula o percentual de variação do saldo do caixa neste mês
+    getCaixaPercentThisMonth(key) {
+        // Filtra transações deste caixa no mês atual
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        // Saldo no início do mês
+        let saldoInicio = 0;
+        let saldoAtual = 0;
+        this.transactions.forEach(t => {
+            const caixaKey = t.caixa && typeof t.caixa === 'object' ? t.caixa.key : t.caixa;
+            const transferToKey = t.transferTo && typeof t.transferTo === 'object' ? t.transferTo.key : t.transferTo;
+            const tDate = new Date(t.date);
+            // Antes do mês atual
+            if (caixaKey === key && (t.type === 'entrada' || t.type === 'saida' || t.type === 'transferencia')) {
+                if (tDate.getFullYear() < year || (tDate.getFullYear() === year && tDate.getMonth() < month)) {
+                    if (t.type === 'entrada') saldoInicio += t.amount;
+                    else if (t.type === 'saida') saldoInicio -= t.amount;
+                    else if (t.type === 'transferencia') saldoInicio -= t.amount;
+                }
+            }
+            if (transferToKey === key && t.type === 'transferencia') {
+                if (tDate.getFullYear() < year || (tDate.getFullYear() === year && tDate.getMonth() < month)) {
+                    saldoInicio += t.amount;
+                }
+            }
+        });
+        // Saldo atual já está em this.balances[key]
+        saldoAtual = this.balances[key] || 0;
+        // Saldo no início do mês pode ser zero
+        // Se não houve saldo anterior e não houve movimentação, retorna null
+        if (saldoInicio === 0 && saldoAtual === 0) return null;
+        // Se saldoInicio for 0 mas houve movimentação, retorna 100% ou -100%
+        if (saldoInicio === 0) return saldoAtual > 0 ? 100 : -100;
+        // Calcula percentual
+        const percent = Math.round(((saldoAtual - saldoInicio) / Math.abs(saldoInicio)) * 100);
+        return percent;
     }
 
     renderDashboardChart() {
@@ -624,28 +713,18 @@ class ChurchFinanceApp {
             legend += `<div style="display:flex;align-items:center;margin-bottom:4px;"><span style="display:inline-block;width:16px;height:16px;background:${verdes[i % verdes.length]};margin-right:8px;border-radius:3px;"></span>${item.nome}: <b style="margin-left:4px;">${this.formatCurrency(item.valor)}</b></div>`;
         });
 
-        container.innerHTML = `
-            <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:32px;">
-                <div class="card" style="padding:16px 8px; margin-bottom:0; background:var(--bg-secondary);">
-                    <svg width="260" height="260" viewBox="0 0 260 260">${slices}${percLabels}</svg>
-                </div>
-            </div>
-        `;
+    container.innerHTML = `<svg width="260" height="260" viewBox="0 0 260 260" style="display:block;">${slices}${percLabels}</svg>`;
         legendContainer.innerHTML = legend;
         legendContainer.style.display = legend ? 'block' : 'none';
     }
 
-    updateBalances() {
-        // Calcular saldos baseado nas transações
-        this.balances = {
-            escola: 0,
-            missoes: 0,
-            campo: 0,
-            geral: 0
-        };
-
+    async updateBalances() {
+        // Gera dinamicamente os saldos para todos os caixas existentes no backend
+        this.balances = {};
+        Object.keys(CAIXAS).forEach(key => {
+            this.balances[key] = 0;
+        });
         this.transactions.forEach(transaction => {
-            // Pega a key do caixa corretamente
             const caixaKey = transaction.caixa && typeof transaction.caixa === 'object' ? transaction.caixa.key : transaction.caixa;
             const transferToKey = transaction.transferTo && typeof transaction.transferTo === 'object' ? transaction.transferTo.key : transaction.transferTo;
             if (transaction.type === 'entrada') {
@@ -665,7 +744,6 @@ class ChurchFinanceApp {
                 }
             }
         });
-
         // Atualizar elementos na tela
         Object.keys(this.balances).forEach(caixa => {
             const element = document.getElementById(`balance-${caixa}`);
@@ -889,13 +967,37 @@ class ChurchFinanceApp {
         var tableHtml = '';
         tableHtml += '<div class="extrato-table-wrapper">';
         tableHtml += '<table class="extrato-table">';
-        tableHtml += '<thead><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>';
+        tableHtml += '<thead><tr>' +
+            '<th>Data</th>' +
+            '<th>Tipo</th>' +
+            '<th>Caixa</th>' +
+            '<th>Descrição</th>' +
+            '<th>Valor</th>' +
+            '<th>Transferência Para</th>' +
+            '</tr></thead><tbody>';
         for (var i = 0; i < transactions.length; i++) {
             var t = transactions[i];
+            var caixaNome = '';
+            if (t.caixa && typeof t.caixa === 'object') {
+                caixaNome = t.caixa.name || CAIXAS[t.caixa.key] || CAIXAS[t.caixa.id] || '';
+            } else {
+                caixaNome = CAIXAS[t.caixa] || '';
+            }
+            var transferNome = '';
+            if (t.type === 'transferencia' && t.transferTo) {
+                if (typeof t.transferTo === 'object') {
+                    transferNome = t.transferTo.name || CAIXAS[t.transferTo.key] || CAIXAS[t.transferTo.id] || '';
+                } else {
+                    transferNome = CAIXAS[t.transferTo] || '';
+                }
+            }
             tableHtml += '<tr>';
             tableHtml += '<td>' + this.formatDate(t.date) + '</td>';
+            tableHtml += '<td>' + (t.type.charAt(0).toUpperCase() + t.type.slice(1)) + '</td>';
+            tableHtml += '<td>' + caixaNome + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
             tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
+            tableHtml += '<td>' + (transferNome || '-') + '</td>';
             tableHtml += '</tr>';
         }
         tableHtml += '</tbody></table></div>';
@@ -1058,8 +1160,15 @@ printReportsTable() {
             startDate.setDate(startDate.getDate() - periodDays);
         }
 
+
+        // Corrige datas e nomes de caixa/transferência para exportação
         const filteredTransactions = this.transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date + 'T00:00:00');
+            // Garante que a data seja sempre válida para comparação
+            let tDate = transaction.date;
+            if (typeof tDate === 'string' && tDate.length === 10) {
+                tDate = tDate + 'T00:00:00';
+            }
+            const transactionDate = new Date(tDate);
             return transactionDate >= startDate && transactionDate <= endDate;
         });
 
@@ -1068,17 +1177,36 @@ printReportsTable() {
             return;
         }
 
+
         const headers = ['Data', 'Tipo', 'Caixa', 'Descrição', 'Valor', 'Transferência Para'];
         const csvContent = [
             headers.join(','),
-            ...filteredTransactions.map(transaction => [
-                transaction.date,
-                transaction.type,
-                CAIXAS[transaction.caixa],
-                `"${transaction.description}"`,
-                transaction.amount,
-                transaction.transferTo ? CAIXAS[transaction.transferTo] : ''
-            ].join(','))
+            ...filteredTransactions.map(transaction => {
+                // Nome do caixa
+                let caixaNome = '';
+                if (transaction.caixa && typeof transaction.caixa === 'object') {
+                    caixaNome = transaction.caixa.name || CAIXAS[transaction.caixa.key] || CAIXAS[transaction.caixa.id] || '';
+                } else {
+                    caixaNome = CAIXAS[transaction.caixa] || '';
+                }
+                // Nome do caixa de transferência
+                let transferNome = '';
+                if (transaction.type === 'transferencia' && transaction.transferTo) {
+                    if (typeof transaction.transferTo === 'object') {
+                        transferNome = transaction.transferTo.name || CAIXAS[transaction.transferTo.key] || CAIXAS[transaction.transferTo.id] || '';
+                    } else {
+                        transferNome = CAIXAS[transaction.transferTo] || '';
+                    }
+                }
+                return [
+                    transaction.date,
+                    transaction.type,
+                    caixaNome,
+                    `"${transaction.description}"`,
+                    transaction.amount,
+                    transferNome
+                ].join(',');
+            })
         ].join('\n');
 
     // Adiciona BOM para garantir acentuação correta em Excel e outros programas

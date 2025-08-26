@@ -1,3 +1,23 @@
+/* Exibir apenas Data, Descrição e Valor na tabela de relatórios em mobile */
+@media (max-width: 600px) {
+    /* Oculta Tipo (2), Caixa (3) e Transferência Para (6) */
+    .extrato-table th:nth-child(2),
+    .extrato-table td:nth-child(2), /* Tipo */
+    .extrato-table th:nth-child(3),
+    .extrato-table td:nth-child(3), /* Caixa */
+    .extrato-table th:nth-child(6),
+    .extrato-table td:nth-child(6)  /* Transferência Para */
+    {
+        display: none;
+    }
+}
+#dashboardChart {
+    margin:32px 0 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 260px;
+}
 @media (max-width: 600px) {
     .extrato-table {
         min-width: unset;
@@ -19,26 +39,18 @@
         }
 }
 @media (max-width: 600px) {
-        .extrato-table th,
-        .extrato-table td {
-            padding-left: 0.5vw;
-            padding-right: 0.5vw;
-            padding-top: 4px;
-            padding-bottom: 4px;
-        }
-    .extrato-table th:nth-child(4),
-    .extrato-table td:nth-child(4),
-    .extrato-table th:nth-child(5),
-    .extrato-table td:nth-child(5),
-    .extrato-table th:nth-child(6),
-    .extrato-table td:nth-child(6) {
-        display: none;
+    .extrato-table th,
+    .extrato-table td {
+        padding-left: 0.5vw;
+        padding-right: 0.5vw;
+        padding-top: 4px;
+        padding-bottom: 4px;
     }
-        .extrato-table td.extrato-valor {
-            text-align: right;
-            white-space: nowrap;
-            min-width: unset;
-        }
+    .extrato-table td.extrato-valor {
+        text-align: right;
+        white-space: nowrap;
+        min-width: unset;
+    }
 }
 /* Extrato bancário em relatórios */
 .extrato-table-wrapper {
@@ -323,7 +335,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 20px;
+    padding: 6px 12px 6px 16px;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -352,6 +364,7 @@ body {
     padding: 8px 12px;
     border-radius: var(--border-radius-sm);
     transition: var(--transition);
+    z-index: 3001;
 }
 
 
@@ -379,6 +392,7 @@ body {
     transform: translateY(-10px);
     transition: var(--transition);
     pointer-events: none;
+    z-index: 4000;
 }
 .user-menu.open .user-dropdown {
     opacity: 1;
@@ -426,13 +440,9 @@ body {
     padding-bottom: 0;
     box-shadow: 0 2px 8px #0001;
 }
-}
 /* Espaço para o conteúdo não ficar atrás da barra fixa */
 /* Espaço para header + navegação fixa */
-.main-content {
-    margin-top: 112px;
-}
-}
+/* .main-content { margin-top: 112px; } */
 
 .nav-tabs::-webkit-scrollbar {
     display: none;
@@ -473,8 +483,8 @@ body {
 /* Conteúdo Principal */
 .main-content {
     max-width: 1200px;
-    margin: 80px auto 0 auto;
-    padding: 20px;
+    margin: 60px auto 0 auto;
+    padding: 10px 8px 0 8px;
 }
 
 .page {
