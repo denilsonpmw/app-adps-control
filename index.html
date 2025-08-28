@@ -432,5 +432,20 @@
 
     <script src="script.js"></script>
     <script src="init-app.js"></script>
+
+    <!-- Modal de opções CRUD para transação (deve ficar no final do body para sempre existir no DOM) -->
+    <div id="transactionCrudModal" class="modal">
+        <div class="modal-content" style="max-width:340px;">
+            <div class="modal-header">
+                <h3>Opções da Transação</h3>
+                <button class="modal-close" id="closeCrudTransactionModalBtn">&times;</button>
+            </div>
+            <div class="crud-modal-body">
+                <div id="crudTransactionDesc" style="margin-bottom:12px;font-weight:500;"></div>
+                <button class="btn-primary" id="editTransactionBtn"><i class="fas fa-edit"></i> Editar</button>
+                <button class="btn-danger" id="deleteTransactionBtn" style="margin-left:10px;"><i class="fas fa-trash"></i> Excluir</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

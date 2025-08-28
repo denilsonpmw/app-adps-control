@@ -42,8 +42,9 @@ class ChurchFinanceApp {
         }
     }
     constructor() {
+
         this.caixas = { ...CAIXAS };
-        this.currentUser = null;
+    this.currentUser = null;
         this.transactions = [];
         this.receipts = [];
         this.balances = {
@@ -66,6 +67,18 @@ class ChurchFinanceApp {
     }
 
     async init() {
+
+        // Persistência de login
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser && USUARIOS[savedUser]) {
+            this.currentUser = savedUser;
+            this.switchScreen('mainApp');
+            const currentUserDiv = document.getElementById('currentUser');
+            if (currentUserDiv) {
+                currentUserDiv.textContent = USUARIOS[this.currentUser];
+            }
+        }
+
         await loadCaixas();
         this.caixas = { ...CAIXAS };
         this.renderCaixaList();
@@ -169,6 +182,7 @@ class ChurchFinanceApp {
 
     // Configuração de event listeners
     setupEventListeners() {
+
         // Gerenciamento de Caixas
         document.getElementById('caixaForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -199,9 +213,15 @@ class ChurchFinanceApp {
         });
 
         // Modais
-        document.getElementById('newTransactionBtn').addEventListener('click', () => {
-            this.openModal('transactionModal');
-        });
+        const newTransactionBtn = document.getElementById('newTransactionBtn');
+        if (newTransactionBtn) {
+            newTransactionBtn.addEventListener('click', () => {
+
+                this.openModal('transactionModal');
+            });
+        } else {
+
+        }
 
         document.getElementById('newReceiptBtn').addEventListener('click', () => {
             this.openModal('receiptModal');
@@ -302,38 +322,38 @@ class ChurchFinanceApp {
         const userSelect = document.getElementById('userSelect');
         const password = document.getElementById('password');
 
-        console.log('Login submit:', { userSelect, password });
-        console.log('userSelect.value:', userSelect.value);
-        console.log('password.value:', password.value);
+
 
         if (!userSelect.value) {
             this.showNotification('Selecione um usuário', 'error');
-            console.log('Login falhou: usuário não selecionado');
+
             return;
         }
 
         if (!password.value) {
             this.showNotification('Digite uma senha', 'error');
-            console.log('Login falhou: senha não digitada');
+
             return;
         }
 
         // Login simulado - qualquer senha funciona
-        this.currentUser = userSelect.value;
-        console.log('Usuário autenticado:', this.currentUser);
+    this.currentUser = userSelect.value;
+    localStorage.setItem('currentUser', this.currentUser);
+
         // Atualiza o nome do usuário no dropdown
         const currentUserDiv = document.getElementById('currentUser');
         if (currentUserDiv) {
             currentUserDiv.textContent = USUARIOS[this.currentUser];
-            console.log('Nome exibido:', USUARIOS[this.currentUser]);
+
         }
         this.switchScreen('mainApp');
         this.showNotification(`Bem-vindo, ${USUARIOS[this.currentUser]}!`, 'success');
-        console.log('Tela principal exibida');
+
     }
 
     handleLogout() {
         this.currentUser = null;
+        localStorage.removeItem('currentUser');
         // Limpa o nome do usuário do dropdown
         const currentUserDiv = document.getElementById('currentUser');
         if (currentUserDiv) {
@@ -390,15 +410,33 @@ class ChurchFinanceApp {
 
     // Modais
     openModal(modalId) {
+
         const modal = document.getElementById(modalId);
+        if (!modal) {
+
+            return;
+        }
         modal.classList.add('active');
-        
+
         // Definir data atual nos formulários
         const today = new Date().toISOString().split('T')[0];
         if (modalId === 'transactionModal') {
-            document.getElementById('transactionDate').value = today;
+
+            const input = document.getElementById('transactionDate');
+            if (input) {
+                input.value = today;
+
+            } else {
+
+            }
         } else if (modalId === 'receiptModal') {
-            document.getElementById('receiptDate').value = today;
+            const input = document.getElementById('receiptDate');
+            if (input) {
+                input.value = today;
+
+            } else {
+
+            }
         }
     }
 
@@ -410,6 +448,12 @@ class ChurchFinanceApp {
         if (modalId === 'transactionModal') {
             document.getElementById('transactionForm').reset();
             document.getElementById('transferToGroup').style.display = 'none';
+            this.editingTransactionId = null;
+            // Restaura título e botão
+            const title = modal.querySelector('.modal-header h3');
+            if (title) title.textContent = 'Nova Transação';
+            const submitBtn = document.querySelector('#transactionForm .btn-primary');
+            if (submitBtn) submitBtn.textContent = 'Salvar';
         } else if (modalId === 'receiptModal') {
             document.getElementById('receiptForm').reset();
         }
@@ -417,41 +461,55 @@ class ChurchFinanceApp {
 
     // Transações
     handleTransactionSubmit() {
-        const form = document.getElementById('transactionForm');
-        const formData = new FormData(form);
-        const type = formData.get('transactionType');
-        const caixa = formData.get('transactionCaixa');
+    const form = document.getElementById('transactionForm');
+    const formData = new FormData(form);
+    const type = formData.get('transactionType');
+    const caixa = formData.get('transactionCaixa');
     const person = formData.get('transactionPerson');
     const description = formData.get('transactionDescription');
-        const amount = parseFloat(formData.get('transactionAmount'));
-        let date = formData.get('transactionDate');
-        // Ajusta para UTC-3 (Brasília) ao enviar para o backend
-        if (date) {
-            // Adiciona horário 03:00:00 para garantir meia-noite em UTC-3
-            date = date + 'T03:00:00.000Z';
-        }
-        let transferTo = undefined;
-        if (type === 'transferencia') {
-            transferTo = formData.get('transferToCaixa');
-            if (!transferTo || transferTo === caixa) {
-                this.showNotification('Selecione um caixa destino diferente', 'error');
-                return;
-            }
-        }
-        // Enviar username do usuário logado
-        const transaction = {
-            type,
-            caixa,
-            description,
-            person,
-            amount,
-            date,
-            user: this.currentUser,
-            ...(transferTo ? { transferTo } : {})
-        };
-        this.addTransaction(transaction);
-        this.closeModal('transactionModal');
+    const amount = parseFloat(formData.get('transactionAmount'));
+    let date = formData.get('transactionDate');
+    if (date) {
+        date = date + 'T03:00:00.000Z';
     }
+    let transferTo = undefined;
+    if (type === 'transferencia') {
+        transferTo = formData.get('transferToCaixa');
+        if (!transferTo || transferTo === caixa) {
+            this.showNotification('Selecione um caixa destino diferente', 'error');
+            return;
+        }
+    }
+    const transaction = {
+        type,
+        caixa,
+        description,
+        person,
+        amount,
+        date,
+        user: this.currentUser,
+        ...(transferTo ? { transferTo } : {})
+    };
+    if (this.editingTransactionId) {
+        // Edição
+        this.updateTransaction(this.editingTransactionId, transaction);
+    } else {
+        // Nova
+        this.addTransaction(transaction);
+    }
+    this.closeModal('transactionModal');
+    // Restaura título e botão para o padrão ao fechar
+    setTimeout(() => {
+        const modal = document.getElementById('transactionModal');
+        if (modal) {
+            const title = modal.querySelector('.modal-header h3');
+            if (title) title.textContent = 'Nova Transação';
+        }
+        const submitBtn = document.querySelector('#transactionForm .btn-primary');
+        if (submitBtn) submitBtn.textContent = 'Salvar';
+        this.editingTransactionId = null;
+    }, 300);
+}
 
     async addTransaction(transaction) {
         try {
@@ -495,6 +553,27 @@ class ChurchFinanceApp {
             this.showNotification('Erro ao registrar transação', 'error');
         }
     }
+
+    async updateTransaction(id, transaction) {
+    try {
+        const res = await fetch(`http://localhost:3001/api/transactions/${id}` , {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(transaction)
+        });
+        if (!res.ok) throw new Error('Erro ao atualizar transação');
+        const updated = await res.json();
+        // Atualiza localmente
+        const idx = this.transactions.findIndex(t => t.id === id);
+        if (idx !== -1) this.transactions[idx] = updated;
+        this.updateBalances();
+        this.renderDashboard();
+        this.renderTransactions();
+        this.showNotification('Transação atualizada com sucesso!', 'success');
+    } catch (err) {
+        this.showNotification('Erro ao atualizar transação', 'error');
+    }
+}
 
     // Recibos
     async handleReceiptSubmit() {
@@ -631,25 +710,26 @@ class ChurchFinanceApp {
             return;
         }
 
-        // Agrupar transações por caixa
-        const caixaData = {};
+        // Calcular saldo real de cada caixa (entradas - saídas ± transferências)
+        const caixaSaldos = {};
         Object.keys(CAIXAS).forEach(caixa => {
-            caixaData[caixa] = {
-                entradas: 0,
-                saidas: 0
-            };
+            caixaSaldos[caixa] = 0;
         });
         this.transactions.forEach(transaction => {
             const caixaKey = transaction.caixa && typeof transaction.caixa === 'object' ? transaction.caixa.key : transaction.caixa;
+            const transferToKey = transaction.transferTo && typeof transaction.transferTo === 'object' ? transaction.transferTo.key : transaction.transferTo;
             if (transaction.type === 'entrada') {
-                if (caixaKey && caixaData[caixaKey]) caixaData[caixaKey].entradas += transaction.amount;
+                if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] += transaction.amount;
             } else if (transaction.type === 'saida') {
-                if (caixaKey && caixaData[caixaKey]) caixaData[caixaKey].saidas += transaction.amount;
+                if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] -= transaction.amount;
+            } else if (transaction.type === 'transferencia') {
+                if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] -= transaction.amount;
+                if (transferToKey && caixaSaldos.hasOwnProperty(transferToKey)) caixaSaldos[transferToKey] += transaction.amount;
             }
         });
 
         // Calcular totais para pizza
-        const totais = Object.keys(caixaData).map(caixa => Math.max(0, caixaData[caixa].entradas - caixaData[caixa].saidas));
+        const totais = Object.keys(caixaSaldos).map(caixa => Math.max(0, caixaSaldos[caixa]));
         const totalGeral = totais.reduce((a, b) => a + b, 0);
         if (totalGeral === 0) {
             container.innerHTML = '<p>Nenhum dado para exibir</p>';
@@ -667,11 +747,11 @@ class ChurchFinanceApp {
             getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary').trim() || '#f8fafc'
         ];
         // Ordenar do maior para o menor para melhor visual
-        const sorted = Object.entries(caixaData)
-            .map(([caixa, data]) => ({
+        const sorted = Object.entries(caixaSaldos)
+            .map(([caixa, valor]) => ({
                 key: caixa,
                 nome: CAIXAS[caixa],
-                valor: Math.max(0, data.entradas - data.saidas)
+                valor: Math.max(0, valor)
             }))
             .sort((a, b) => b.valor - a.valor);
 
@@ -786,11 +866,126 @@ class ChurchFinanceApp {
 
     renderTransactionsList(transactions) {
         const container = document.getElementById('transactionsList');
-        
         container.innerHTML = transactions.length > 0 
             ? transactions.map(transaction => this.createTransactionHTML(transaction)).join('')
             : '<p class="no-data">Nenhuma transação encontrada</p>';
+
+        // Adiciona evento de clique para cada card de transação
+        if (transactions.length > 0) {
+            const items = container.querySelectorAll('.transaction-item');
+            items.forEach((item, idx) => {
+                item.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const transaction = transactions[idx];
+                    if (!transaction.id) {
+                        this.showNotification('Transação sem ID. Não é possível buscar no banco.', 'error');
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`http://localhost:3001/api/transactions/${transaction.id}`);
+                        if (!res.ok) throw new Error('Transação não encontrada');
+                        const data = await res.json();
+                        this.openTransactionCrudModal(data);
+                    } catch (err) {
+                        this.showNotification('Erro ao buscar transação no banco', 'error');
+                    }
+                });
+            });
+        }
     }
+
+    // Abre o modal de CRUD de transação
+    openTransactionCrudModal(transaction) {
+    const modal = document.getElementById('transactionCrudModal');
+
+    if (!modal) {
+
+        return;
+    }
+    document.getElementById('crudTransactionDesc').textContent = transaction.description || '';
+    modal.classList.add('active');
+    // Salva a transação selecionada para uso nos botões de editar/excluir
+    this.selectedTransaction = transaction;
+
+    // Configura botões do modal
+    const editBtn = document.getElementById('editTransactionBtn');
+    const deleteBtn = document.getElementById('deleteTransactionBtn');
+    const closeBtn = document.getElementById('closeCrudTransactionModalBtn');
+
+    if (editBtn) {
+        editBtn.onclick = async () => {
+
+            // Busca a transação mais atualizada do backend
+            try {
+                const res = await fetch(`http://localhost:3001/api/transactions/${transaction.id}`);
+                if (!res.ok) throw new Error('Transação não encontrada');
+                const data = await res.json();
+                // Preenche o formulário de transação para edição
+                this.populateTransactionForm(data);
+                modal.classList.remove('active');
+                // Abre o modal de edição
+                this.openModal('transactionModal');
+            } catch (err) {
+                this.showNotification('Erro ao buscar transação para edição', 'error');
+            }
+        };
+    }
+    if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+            if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
+            try {
+                const res = await fetch(`http://localhost:3001/api/transactions/${transaction.id}`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const data = await res.json();
+                    this.showNotification(data.error || 'Erro ao excluir transação', 'error');
+                    return;
+                }
+                this.showNotification('Transação excluída com sucesso!', 'success');
+                modal.classList.remove('active');
+                await this.loadTransactions();
+                this.renderTransactions();
+            } catch (err) {
+                this.showNotification('Erro ao excluir transação', 'error');
+            }
+        };
+    }
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.classList.remove('active');
+        };
+    }
+    }
+
+    // Preenche o formulário de transação para edição
+    populateTransactionForm(transaction) {
+
+    document.getElementById('transactionType').value = transaction.type || '';
+    document.getElementById('transactionCaixa').value = transaction.caixa?.key || transaction.caixaId || '';
+    document.getElementById('transactionAmount').value = transaction.amount || '';
+    document.getElementById('transactionDate').value = transaction.date ? new Date(transaction.date).toISOString().split('T')[0] : '';
+    document.getElementById('transactionDescription').value = transaction.description || '';
+    document.getElementById('transactionPerson').value = transaction.person || '';
+    // Transferência
+    if (transaction.type === 'transferencia') {
+        document.getElementById('transferToGroup').style.display = 'block';
+        document.getElementById('transferToCaixa').required = true;
+        document.getElementById('transferToCaixa').value = transaction.transferTo?.key || transaction.transferToId || '';
+    } else {
+        document.getElementById('transferToGroup').style.display = 'none';
+        document.getElementById('transferToCaixa').required = false;
+        document.getElementById('transferToCaixa').value = '';
+    }
+    // Salva id para update
+    this.editingTransactionId = transaction.id;
+    // Altera título e botão
+    const modal = document.getElementById('transactionModal');
+    if (modal) {
+        const title = modal.querySelector('.modal-header h3');
+        if (title) title.textContent = 'Alterar Transação';
+    }
+    const submitBtn = document.querySelector('#transactionForm .btn-primary');
+    if (submitBtn) submitBtn.textContent = 'Atualizar';
+}
 
     createTransactionHTML(transaction) {
         const typeIcon = {
@@ -1008,21 +1203,34 @@ printReportsTable() {
         const container = document.getElementById('reportsTableContainer');
         if (!container) return;
         const printWindow = window.open('', '_blank', 'width=900,height=700');
+        // Cabeçalho com dados da igreja
+        const church = this.churchData || {};
+        const headerHtml = `
+            <div style="text-align:center;margin-bottom:18px;">
+                <h2 style="margin:0;color:#14532d;">${church.name || 'Nome da Igreja'}</h2>
+                <div style="font-size:15px;color:#333;">${church.address || ''}</div>
+                <div style="font-size:15px;color:#333;">${church.phone || ''} ${church.email ? ' | ' + church.email : ''}</div>
+                <div style="font-size:14px;color:#555;">${church.cnpj ? 'CNPJ: ' + church.cnpj : ''}</div>
+                <div style="margin-top:10px;font-size:18px;font-weight:bold;color:#166534;">Relatório de Transações</div>
+            </div>
+        `;
         printWindow.document.write(`
             <html>
             <head>
                 <title>Relatório de Transações</title>
                 <style>
-                    body { font-family: Arial, sans-serif; margin: 30px; }
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-                    th, td { border: 1px solid #ccc; padding: 6px 8px; }
-                    th { background: #14532d; color: #fff; }
+                    body { font-family: Arial, sans-serif; margin: 30px; background: #f8fafc; }
+                    table { border-collapse: collapse; margin-bottom: 10px; box-shadow: 0 2px 8px #0001; background: #fff; width: auto; min-width: 100%; }
+                    th, td { border: 1px solid #ccc; padding: 8px 10px; font-size: 15px; white-space: nowrap; }
+                    th { background: #14532d !important; color: #fff !important; letter-spacing: 1px; font-size: 16px; }
                     tr:nth-child(even) { background: #f1f5f9; }
                     tr:nth-child(odd) { background: #fff; }
                     h2 { margin-bottom: 0; }
+                    table, th, td { table-layout: auto; }
                 </style>
             </head>
             <body>
+                ${headerHtml}
                 ${container.innerHTML}
             </body>
             </html>
@@ -1612,6 +1820,7 @@ printReportsTable() {
                             padding: 30px 20px;
                         }
                     }
+
                     * {
                         margin: 0;
                         padding: 0;
@@ -1963,3 +2172,4 @@ printReportsTable() {
         `;
     }
 }
+

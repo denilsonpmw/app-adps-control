@@ -1,0 +1,18 @@
+<!-- Modal de opções CRUD para transação (deve ficar no final do body para sempre existir no DOM) -->
+<div id="transactionCrudModal" class="modal">
+    <div class="modal-content" style="max-width:340px;">
+        <div class="modal-header">
+            <h3>Opções da Transação</h3>
+            <button class="modal-close" id="closeCrudTransactionModalBtn">&times;</button>
+        </div>
+        <div class="crud-modal-body" style="display:flex;flex-direction:column;align-items:center;">
+            <div id="crudTransactionDesc" style="margin-bottom:16px;font-weight:500;"></div>
+            <div style="display:flex;gap:16px;justify-content:center;width:100%;margin-top:8px;">
+                <button class="btn-primary" id="editTransactionBtn" style="padding:10px 22px;font-size:16px;display:flex;align-items:center;gap:8px;"><i class="fas fa-edit"></i> Editar</button>
+                <button class="btn-danger" id="deleteTransactionBtn" style="padding:10px 22px;font-size:16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px #0001;transition:background 0.2s;">
+                    <i class="fas fa-trash"></i> Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

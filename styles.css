@@ -1,3 +1,102 @@
+#transactionCrudModal .modal-content > #crudTransactionDesc {
+    padding-left: 12px;
+    padding-right: 12px;
+    display: block;
+}
+
+#transactionCrudModal .form-actions {
+    padding-left: 12px;
+    padding-right: 12px;
+}
+/* Padding interno maior para o modal de CRUD de transação */
+#transactionCrudModal .modal-content {
+    padding: 16px 32px 16px 32px;
+    box-sizing: border-box;
+}
+/* Espaçamento interno para o formulário do modal */
+#transactionModal .modal-content form {
+    padding: 18px 22px 10px 22px;
+    box-sizing: border-box;
+}
+/* Estilo para todos os campos dos formulários de modal */
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 6px;
+    background: var(--bg-secondary, #222a3c);
+    color: var(--text-primary, #fff);
+    font-size: 1rem;
+    margin-bottom: 2px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--primary-color, #22c55e);
+    outline: none;
+}
+.form-group input[type="date"]::-webkit-input-placeholder,
+.form-group input[type="number"]::-webkit-input-placeholder,
+.form-group input[type="text"]::-webkit-input-placeholder {
+    color: var(--text-secondary, #bbb);
+    opacity: 1;
+}
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group input[type="text"] {
+    background: var(--bg-secondary, #222a3c);
+    color: var(--text-primary, #fff);
+}
+/* Estilo para selects dos formulários de modal */
+.form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 6px;
+    background: var(--bg-secondary, #222a3c);
+    color: var(--text-primary, #fff);
+    font-size: 1rem;
+    margin-bottom: 2px;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+.form-group select:focus {
+    border-color: var(--primary-color, #22c55e);
+    outline: none;
+}
+#transactionModal.modal.active #transactionForm {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+/* Botão Danger (Excluir) */
+.btn-danger {
+    background: #e53935 !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 0.5rem 1.2rem !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 90px !important;
+    min-height: 40px !important;
+    cursor: pointer !important;
+    transition: background 0.2s !important;
+}
+.btn-danger:hover, .btn-danger:focus {
+    background: #b71c1c !important;
+    color: #fff !important;
+}
 /* Exibir apenas Data, Descrição e Valor na tabela de relatórios em mobile */
 @media (max-width: 600px) {
     /* Oculta Tipo (2), Caixa (3) e Transferência Para (6) */
@@ -830,15 +929,18 @@ body {
     width: 100%;
     height: 100%;
     background: var(--modal-overlay);
-    z-index: 1000;
+    z-index: 3000;
     animation: fadeIn 0.3s ease-out;
 }
 
 .modal.active {
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    max-width: 100vw;
+    min-width: 0;
+    padding: 0;
+    z-index: 4000;
 }
 
 .modal-content {
@@ -846,10 +948,42 @@ body {
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-xl);
     width: 100%;
-    max-width: 500px;
-    max-height: 90vh;
+    max-width: 400px;
+        position: fixed;
+    max-height: 80vh;
     overflow-y: auto;
     animation: slideUp 0.3s ease-out;
+    margin: 0 auto;
+}
+
+/* Modal de opções da transação (CRUD) */
+#transactionCrudModal .modal-content {
+    max-width: 70px;
+    min-width: 30px;
+    width: 100%;
+    padding: 0 0 18px 0;
+    background: rgba(34, 42, 60, 0.75) !important; /* cor base + 25% transparência */
+}
+
+/* Centralização absoluta para garantir centralização em todas as telas */
+#transactionCrudModal.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: center;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 4000;
+}
+
+#transactionModal.modal.active {
+    z-index: 4000;
+    background: var(--modal-overlay);
+    padding: 0;
+    /* Centralização vertical/horizontal absoluta */
+    box-sizing: border-box;
 }
 
 .modal-header {
@@ -890,22 +1024,10 @@ body {
 .form-group label {
     display: block;
     font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    font-size: 0.875rem;
-    transition: var(--transition);
-    background: var(--bg-secondary);
     color: var(--text-primary);
+    margin-bottom: 6px;
+    font-weight: 500;
+    transition: var(--transition);
 }
 
 .form-group input:focus,
@@ -923,10 +1045,59 @@ body {
 
 .form-actions {
     display: flex;
+    flex-direction: row;
     gap: 15px;
     justify-content: flex-end;
     padding: 20px 25px;
     border-top: 1px solid var(--border-color);
+}
+.form-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 18px;
+        flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+    .form-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: stretch;
+        gap: 8px;
+    }
+            .form-actions button,
+            .form-actions .btn {
+                flex: 1 1 45%;
+                min-width: 120px;
+                max-width: 100%;
+                padding: 12px 0;
+                box-sizing: border-box;
+                /* Remover width: 100% ou display: block se existir */
+            }
+/* Corrigir possíveis conflitos de width ou display nos botões dentro do form-actions */
+.form-actions button,
+.form-actions .btn {
+    width: auto !important;
+    display: inline-block !important;
+}
+}
+
+/* Botão cancelar com fundo danger */
+#transactionForm .btn-secondary,
+#receiptForm .btn-secondary {
+    background: #e53935 !important;
+    color: #fff !important;
+    border: none !important;
+    font-weight: 600;
+    box-shadow: none;
+    outline: none;
+    transition: background 0.2s;
+}
+#transactionForm .btn-secondary:hover,
+#receiptForm .btn-secondary:hover {
+    background: #b71c1c !important;
 }
 
 /* Recibos */

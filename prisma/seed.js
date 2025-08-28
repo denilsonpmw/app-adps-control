@@ -29,10 +29,10 @@ async function main() {
   });
 
   // Caixas
-  const escola = await prisma.caixa.create({ data: { key: 'escola', name: 'Escola Bíblica' } });
-  const missoes = await prisma.caixa.create({ data: { key: 'missoes', name: 'Missões' } });
-  const campo = await prisma.caixa.create({ data: { key: 'campo', name: 'Missões do Campo' } });
-  const geral = await prisma.caixa.create({ data: { key: 'geral', name: 'Geral' } });
+  const escolabiblica = await prisma.caixa.create({ data: { key: 'escolabiblica', name: 'Escola Bíblica' } });
+  const missoessede = await prisma.caixa.create({ data: { key: 'missoessede', name: 'Missões Sede' } });
+  const missoescampo = await prisma.caixa.create({ data: { key: 'missoescampo', name: 'Missões Campo' } });
+  
 
   // Dados da igreja
   await prisma.churchData.create({
