@@ -42,9 +42,8 @@ class ChurchFinanceApp {
         }
     }
     constructor() {
-
         this.caixas = { ...CAIXAS };
-    this.currentUser = null;
+        this.currentUser = null;
         this.transactions = [];
         this.receipts = [];
         this.balances = {
@@ -63,7 +62,24 @@ class ChurchFinanceApp {
             cnpj: ''
         };
         this.churchLogo = null;
+        this.loadUsers();
         this.init();
+    }
+
+    async loadUsers() {
+        try {
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            const userSelect = document.getElementById('userSelect');
+            userSelect.innerHTML = '<option value="">Selecione o usuário</option>';
+            users.forEach(user => {
+                userSelect.innerHTML += `<option value="${user.username}">${user.name}</option>`;
+            });
+        } catch (err) {
+            // fallback: mostra opção de admin
+            const userSelect = document.getElementById('userSelect');
+            userSelect.innerHTML = '<option value="admin">admin</option>';
+        }
     }
 
     async init() {
@@ -343,34 +359,42 @@ class ChurchFinanceApp {
     // Autenticação
     handleLogin() {
         const userSelect = document.getElementById('userSelect');
-        const password = document.getElementById('password');
-
-
+        const password = document.getElementById('password').value;
 
         if (!userSelect.value) {
             this.showNotification('Selecione um usuário', 'error');
-
             return;
         }
-
-        if (!password.value) {
+        if (!password) {
             this.showNotification('Digite uma senha', 'error');
-
             return;
         }
 
-        // Login simulado - qualquer senha funciona
-    this.currentUser = userSelect.value;
-    localStorage.setItem('currentUser', this.currentUser);
-
-        // Atualiza o nome do usuário no dropdown
-        const currentUserDiv = document.getElementById('currentUser');
-        if (currentUserDiv) {
-            currentUserDiv.textContent = USUARIOS[this.currentUser];
-
-        }
-        this.switchScreen('mainApp');
-        this.showNotification(`Bem-vindo, ${USUARIOS[this.currentUser]}!`, 'success');
+        // Envia username e senha para o backend validar
+        fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: userSelect.value, password })
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (!result.success) {
+                this.showNotification(result.message || 'Usuário ou senha inválidos', 'error');
+                return;
+            }
+            this.currentUser = result.user.username;
+            localStorage.setItem('currentUser', this.currentUser);
+            // Atualiza o nome do usuário no dropdown
+            const currentUserDiv = document.getElementById('currentUser');
+            if (currentUserDiv) {
+                currentUserDiv.textContent = result.user.name;
+            }
+            this.switchScreen('mainApp');
+            this.showNotification(`Bem-vindo, ${result.user.name}!`, 'success');
+        })
+        .catch(() => {
+            this.showNotification('Erro ao autenticar', 'error');
+        });
 
     }
 
@@ -1519,6 +1543,7 @@ printReportsTable() {
             this.editingCaixaKey = caixa.key;
             document.getElementById('addCaixaBtn').style.display = 'none';
             document.getElementById('updateCaixaBtn').style.display = '';
+            document.getElementById('cancelCaixaEditBtn').style.display = '';
         } catch (err) {
             this.showNotification('Erro ao buscar caixa para edição', 'error');
         }
@@ -1544,6 +1569,7 @@ printReportsTable() {
             caixaNameInput.value = '';
             document.getElementById('addCaixaBtn').style.display = '';
             document.getElementById('updateCaixaBtn').style.display = 'none';
+            document.getElementById('cancelCaixaEditBtn').style.display = 'none';
             await this.renderCaixaList();
             this.showNotification('Caixa alterado com sucesso!', 'success');
         } catch (err) {

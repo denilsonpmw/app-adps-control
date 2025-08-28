@@ -1,3 +1,21 @@
+// Endpoint seguro de autenticação
+app.post('/api/auth', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.json({ success: false, message: 'Usuário e senha obrigatórios' });
+  }
+  const user = await prisma.user.findUnique({ where: { username } });
+  if (!user) {
+    return res.json({ success: false, message: 'Usuário não encontrado' });
+  }
+  // Comparação simples, para produção use bcrypt
+  if (user.passwordHash !== password) {
+    return res.json({ success: false, message: 'Senha incorreta' });
+  }
+  // Nunca envie o hash para o frontend
+  const { passwordHash, ...userSafe } = user;
+  res.json({ success: true, user: userSafe });
+});
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
