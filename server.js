@@ -69,7 +69,62 @@ app.delete('/api/caixas/:key', async (req, res) => {
 
 // Transações
 // Buscar transação por ID
+// Buscar transação por ID
 app.get('/api/transactions/:id', async (req, res) => {
+// Atualizar transação
+app.put('/api/transactions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+    const data = req.body;
+    // Buscar o usuário pelo username enviado
+    let userId = data.userId;
+    if (!userId && data.user) {
+      const user = await prisma.user.findUnique({ where: { username: data.user } });
+      if (!user) {
+        return res.status(400).json({ error: 'Usuário não encontrado' });
+      }
+      userId = user.id;
+    }
+    // Converter caixa e transferTo para IDs se vierem como string
+    let caixaId = data.caixaId;
+    if (!caixaId && data.caixa) {
+      const caixa = await prisma.caixa.findUnique({ where: { key: data.caixa } });
+      if (!caixa) {
+        return res.status(400).json({ error: 'Caixa não encontrado' });
+      }
+      caixaId = caixa.id;
+    }
+    let transferToId = data.transferToId;
+    if (!transferToId && data.transferTo) {
+      const caixa = await prisma.caixa.findUnique({ where: { key: data.transferTo } });
+      transferToId = caixa ? caixa.id : null;
+    }
+    // Converter data para Date
+    const date = data.date ? new Date(data.date) : new Date();
+    // Validação dos campos obrigatórios
+    if (!data.type || !caixaId || !userId || !data.amount || !date) {
+      return res.status(400).json({ error: 'Campos obrigatórios ausentes ou inválidos.' });
+    }
+    const updated = await prisma.transaction.update({
+      where: { id },
+      data: {
+        type: data.type,
+        caixaId,
+        description: data.description || '',
+        person: data.person || '',
+        amount: data.amount,
+        date,
+        transferToId,
+        userId,
+      },
+      include: { caixa: true, user: true, transferTo: true, receipt: true }
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
   const transaction = await prisma.transaction.findUnique({
