@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 const app = express();
@@ -20,8 +21,9 @@ app.post('/api/auth', async (req, res) => {
   if (!user) {
     return res.json({ success: false, message: 'Usuário não encontrado' });
   }
-  // Comparação simples, para produção use bcrypt
-  if (user.passwordHash !== password) {
+  // Comparação segura usando bcrypt
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) {
     return res.json({ success: false, message: 'Senha incorreta' });
   }
   // Nunca envie o hash para o frontend

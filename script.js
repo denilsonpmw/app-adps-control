@@ -1,3 +1,7 @@
+// Detecta URL do backend automaticamente
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3001'
+    : '';
 // Carregamento dinâmico dos caixas do backend
 let CAIXAS = {};
 async function loadCaixas() {
@@ -66,21 +70,8 @@ class ChurchFinanceApp {
         this.init();
     }
 
-    async loadUsers() {
-        try {
-            const res = await fetch('/api/users');
-            const users = await res.json();
-            const userSelect = document.getElementById('userSelect');
-            userSelect.innerHTML = '<option value="">Selecione o usuário</option>';
-            users.forEach(user => {
-                userSelect.innerHTML += `<option value="${user.username}">${user.name}</option>`;
-            });
-        } catch (err) {
-            // fallback: mostra opção de admin
-            const userSelect = document.getElementById('userSelect');
-            userSelect.innerHTML = '<option value="admin">admin</option>';
-        }
-    }
+    // Não é mais necessário carregar usuários para o select
+    async loadUsers() {}
 
     async init() {
 
@@ -362,7 +353,7 @@ class ChurchFinanceApp {
         const password = document.getElementById('password').value;
 
         if (!userSelect.value) {
-            this.showNotification('Selecione um usuário', 'error');
+            this.showNotification('Digite o usuário', 'error');
             return;
         }
         if (!password) {
@@ -371,7 +362,7 @@ class ChurchFinanceApp {
         }
 
         // Envia username e senha para o backend validar
-        fetch('/api/auth', {
+    fetch(`${API_BASE_URL}/api/auth`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: userSelect.value, password })
