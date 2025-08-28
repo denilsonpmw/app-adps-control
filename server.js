@@ -1,3 +1,15 @@
+
+const express = require('express');
+const cors = require('cors');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
+const app = express();
+app.use(cors());
+app.use(express.json());
+// Servir arquivos estáticos do frontend (index.html, script.js, etc)
+app.use(express.static(__dirname));
+
 // Endpoint seguro de autenticação
 app.post('/api/auth', async (req, res) => {
   const { username, password } = req.body;
@@ -16,16 +28,6 @@ app.post('/api/auth', async (req, res) => {
   const { passwordHash, ...userSafe } = user;
   res.json({ success: true, user: userSafe });
 });
-const express = require('express');
-const cors = require('cors');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
-const app = express();
-app.use(cors());
-app.use(express.json());
-// Servir arquivos estáticos do frontend (index.html, script.js, etc)
-app.use(express.static(__dirname));
 
 // Usuários
 app.get('/api/users', async (req, res) => {
