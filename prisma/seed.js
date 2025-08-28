@@ -2,124 +2,15 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  // Usuários
-  const admin = await prisma.user.create({
+  // Usuário admin para produção
+  await prisma.user.create({
     data: {
       username: 'admin',
-      name: 'Administrador',
-      passwordHash: 'senha_hash_admin',
+      name: 'Denilson Maciel',
+      passwordHash: 'cd1526',
       role: 'admin',
     },
   });
-  const tesoureiro = await prisma.user.create({
-    data: {
-      username: 'tesoureiro',
-      name: 'Tesoureiro',
-      passwordHash: 'senha_hash_tesoureiro',
-      role: 'tesoureiro',
-    },
-  });
-  const secretario = await prisma.user.create({
-    data: {
-      username: 'secretario',
-      name: 'Secretário',
-      passwordHash: 'senha_hash_secretario',
-      role: 'secretario',
-    },
-  });
-
-  // Caixas
-  const escolabiblica = await prisma.caixa.create({ data: { key: 'escolabiblica', name: 'Escola Bíblica' } });
-  const missoessede = await prisma.caixa.create({ data: { key: 'missoessede', name: 'Missões Sede' } });
-  const missoescampo = await prisma.caixa.create({ data: { key: 'missoescampo', name: 'Missões Campo' } });
-  
-
-  // Dados da igreja
-  await prisma.churchData.create({
-    data: {
-      name: 'Igreja Exemplo',
-      address: 'Rua das Flores, 123',
-      phone: '(99) 99999-9999',
-      email: 'contato@igrejaexemplo.org',
-      cnpj: '12.345.678/0001-99',
-      logoUrl: null,
-    },
-  });
-
-  // Transações
-  const t1 = await prisma.transaction.create({
-    data: {
-      type: 'entrada',
-      caixaId: escola.id,
-      description: 'Oferta Escola Bíblica',
-      amount: 150.00,
-      date: new Date('2025-08-15'),
-      userId: admin.id,
-    },
-  });
-  const t2 = await prisma.transaction.create({
-    data: {
-      type: 'entrada',
-      caixaId: missoes.id,
-      description: 'Carnê de Missões - João Silva',
-      amount: 50.00,
-      date: new Date('2025-08-14'),
-      userId: tesoureiro.id,
-    },
-  });
-  const t3 = await prisma.transaction.create({
-    data: {
-      type: 'saida',
-      caixaId: geral.id,
-      description: 'Material de expediente',
-      amount: 25.50,
-      date: new Date('2025-08-13'),
-      userId: admin.id,
-    },
-  });
-  const t4 = await prisma.transaction.create({
-    data: {
-      type: 'entrada',
-      caixaId: geral.id,
-      description: 'Oferta de Culto',
-      amount: 320.00,
-      date: new Date('2025-08-12'),
-      userId: admin.id,
-    },
-  });
-  const t5 = await prisma.transaction.create({
-    data: {
-      type: 'entrada',
-      caixaId: campo.id,
-      description: 'Doação para Missões do Campo',
-      amount: 200.00,
-      date: new Date('2025-08-11'),
-      userId: secretario.id,
-    },
-  });
-  const t6 = await prisma.transaction.create({
-    data: {
-      type: 'transferencia',
-      caixaId: geral.id,
-      description: 'Transferência para Escola Bíblica',
-      amount: 100.00,
-      date: new Date('2025-08-10'),
-      transferToId: escola.id,
-      userId: admin.id,
-    },
-  });
-
-  // Recibos
-  await prisma.receipt.create({
-    data: {
-      name: 'João Silva',
-      type: 'carnê',
-      amount: 50.00,
-      date: new Date('2025-08-14'),
-      notes: 'Carnê de Missões - Janeiro 2025',
-      userId: tesoureiro.id,
-      transactionId: t2.id,
-    },
   });
   await prisma.receipt.create({
     data: {

@@ -105,6 +105,29 @@ class ChurchFinanceApp {
                 }
             });
         }
+
+        // Mobile nav: mover para dentro do menu do usuário
+        const mobileNav = document.getElementById('mobileNavMenu');
+        const mobileNavContainer = document.getElementById('mobileNavContainer');
+        if (mobileNav && mobileNavContainer) {
+            mobileNavContainer.innerHTML = '';
+            mobileNavContainer.appendChild(mobileNav);
+        }
+        // Ativar navegação mobile
+        if (mobileNav) {
+            mobileNav.addEventListener('click', (e) => {
+                const btn = e.target.closest('.nav-tab');
+                if (btn) {
+                    document.querySelectorAll('.mobile-nav .nav-tab').forEach(tab => tab.classList.remove('active'));
+                    btn.classList.add('active');
+                    const page = btn.getAttribute('data-page');
+                    if (page) {
+                        this.switchPage(page);
+                        userMenu.classList.remove('open');
+                    }
+                }
+            });
+        }
     }
 
     // Carregar transações do backend
@@ -1435,27 +1458,26 @@ printReportsTable() {
     // Utilitários
     // Gerenciamento de Caixas
     async renderCaixaList() {
-        const caixaList = document.getElementById('caixaList');
-        caixaList.innerHTML = '<li>Carregando...</li>';
+        const caixaTableBody = document.getElementById('caixaTableBody');
+        if (caixaTableBody) caixaTableBody.innerHTML = '<tr><td colspan="3">Carregando...</td></tr>';
         try {
             const res = await fetch('http://localhost:3001/api/caixas');
             const caixasArr = await res.json();
             this.caixas = {};
-            caixaList.innerHTML = '';
+            if (caixaTableBody) caixaTableBody.innerHTML = '';
             caixasArr.forEach(caixa => {
                 this.caixas[caixa.key] = caixa.name;
-                const li = document.createElement('li');
-                li.className = 'caixa-item';
-                li.innerHTML = `
-                    <span>${caixa.name}</span>
-                    <button class="btn-secondary" onclick="app.editCaixa('${caixa.key}')"><i class="fas fa-edit"></i></button>
-                    <button class="btn-danger" onclick="app.deleteCaixa('${caixa.key}')"><i class="fas fa-trash"></i></button>
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="caixa-nome">${caixa.name}</td>
+                    <td class="caixa-edit"><button class="btn-secondary" onclick="app.editCaixa('${caixa.key}')"><i class="fas fa-edit"></i></button></td>
+                    <td class="caixa-delete"><button class="btn-danger" onclick="app.deleteCaixa('${caixa.key}')"><i class="fas fa-trash"></i></button></td>
                 `;
-                caixaList.appendChild(li);
+                if (caixaTableBody) caixaTableBody.appendChild(tr);
             });
             this.updateCaixaSelects();
         } catch (err) {
-            caixaList.innerHTML = '<li>Erro ao carregar caixas</li>';
+            if (caixaTableBody) caixaTableBody.innerHTML = '<tr><td colspan="3">Erro ao carregar caixas</td></tr>';
         }
     }
 
@@ -1497,7 +1519,6 @@ printReportsTable() {
             this.editingCaixaKey = caixa.key;
             document.getElementById('addCaixaBtn').style.display = 'none';
             document.getElementById('updateCaixaBtn').style.display = '';
-            document.getElementById('cancelCaixaEditBtn').style.display = '';
         } catch (err) {
             this.showNotification('Erro ao buscar caixa para edição', 'error');
         }
@@ -1523,7 +1544,6 @@ printReportsTable() {
             caixaNameInput.value = '';
             document.getElementById('addCaixaBtn').style.display = '';
             document.getElementById('updateCaixaBtn').style.display = 'none';
-            document.getElementById('cancelCaixaEditBtn').style.display = 'none';
             await this.renderCaixaList();
             this.showNotification('Caixa alterado com sucesso!', 'success');
         } catch (err) {

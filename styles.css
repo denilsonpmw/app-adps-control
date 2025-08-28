@@ -1,3 +1,220 @@
+/* Tabela de caixas sem linhas de grade, ícones centralizados */
+.caixa-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: none;
+}
+.caixa-table td {
+    border: none;
+    padding: 6px 4px;
+    font-size: 0.97rem;
+    vertical-align: middle;
+}
+.caixa-table td.caixa-nome {
+    text-align: left;
+    color: var(--text-primary);
+    font-size: 0.97rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.caixa-table td.caixa-edit,
+.caixa-table td.caixa-delete {
+    width: 38px;
+    text-align: center;
+    vertical-align: middle;
+}
+.caixa-table td.caixa-edit button,
+.caixa-table td.caixa-delete button {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    font-size: 1.08rem !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    transition: background 0.15s, border 0.15s;
+}
+        /* Grid 3x3: nome | editar | excluir */
+        .caixa-list {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding-left: 0;
+        }
+                .caixa-list li {
+                    display: grid;
+                    grid-template-columns: 1fr 38px 38px;
+                    align-items: start;
+                    gap: 6px;
+                    margin-bottom: 8px;
+                    font-size: 0.97rem;
+                    list-style: none;
+                    background: none;
+                    border: none;
+                    box-shadow: none;
+                    padding: 0;
+                    min-height: 38px;
+                }
+                .caixa-list li > span,
+                .caixa-list li > .caixa-nome {
+                    display: block;
+                    line-height: 1.2;
+                    padding-top: 4px;
+                    padding-bottom: 4px;
+                    min-height: 38px;
+                    height: 38px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .caixa-list li > button {
+                    align-self: start !important;
+                    justify-self: center !important;
+                    margin-top: 2px !important;
+                }
+        .caixa-list li > span,
+        .caixa-list li > .caixa-nome {
+            grid-column: 1;
+            text-align: left;
+            font-size: 0.97rem;
+            word-break: break-word;
+            color: var(--text-primary);
+            padding-left: 2px;
+        }
+        .caixa-list li > button {
+            width: 34px !important;
+            height: 34px !important;
+            min-width: 34px !important;
+            min-height: 34px !important;
+            max-width: 34px !important;
+            max-height: 34px !important;
+            font-size: 1.08rem !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            transition: background 0.15s, border 0.15s;
+        }
+        .caixa-list li > button:nth-of-type(1) {
+            grid-column: 2;
+        }
+        .caixa-list li > button:nth-of-type(2) {
+            grid-column: 3;
+        }
+/* Ajustes para botões de caixas no modo mobile */
+@media (max-width: 600px) {
+    .caixa-list {
+        padding-left: 0;
+    }
+    .caixa-list li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        font-size: 0.97rem;
+    }
+            .caixa-list li > button {
+                width: 32px !important;
+                height: 32px !important;
+                min-width: 32px !important;
+                min-height: 32px !important;
+                max-width: 32px !important;
+                max-height: 32px !important;
+                font-size: 1.08rem !important;
+                padding: 0 !important;
+                border-radius: 8px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 2px 0 0 !important;
+                box-sizing: border-box !important;
+                transition: background 0.15s, border 0.15s;
+            }
+    .caixa-list .caixa-edit-btn {
+        background: var(--bg-tertiary, #222a3c);
+        color: var(--primary-color);
+        border: 1.5px solid var(--primary-color);
+        margin-right: 2px;
+    }
+    .caixa-list .caixa-delete-btn {
+        background: var(--danger-color);
+        color: #fff;
+        border: none;
+        margin-left: 2px;
+    }
+    .caixa-list .caixa-edit-btn:active,
+    .caixa-list .caixa-delete-btn:active {
+        transform: scale(0.95);
+    }
+    /* Botões do formulário de caixa */
+    #caixaForm .form-actions {
+        flex-direction: column;
+        gap: 6px;
+    }
+    #caixaForm .form-actions button {
+        width: 100%;
+        min-height: 36px;
+        font-size: 0.98rem;
+        border-radius: 8px;
+        padding: 0 0.5em;
+        box-sizing: border-box;
+    }
+}
+/* Ícones do menu mobile e dropdown do usuário */
+.mobile-nav .nav-tab i,
+#userDropdown .nav-tab i,
+#userDropdown button i {
+    font-size: 1.25rem !important;
+    min-width: 22px;
+    text-align: center;
+}
+
+/* Botão Sair: texto grande, forte, cor principal */
+#userDropdown #logoutBtn {
+    font-size: 1.08rem;
+    font-weight: 600;
+    color: var(--primary-color) !important;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+}
+#userDropdown #logoutBtn:hover {
+    background: var(--bg-tertiary);
+    color: var(--warning-color) !important;
+}
+#userDropdown #logoutBtn i {
+    color: var(--warning-color) !important;
+}
+
+/* Menus: texto menor, peso normal, cor secundária */
+.mobile-nav .nav-tab,
+#userDropdown .nav-tab {
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: var(--text-secondary) !important;
+}
+.mobile-nav .nav-tab.active,
+.mobile-nav .nav-tab:hover,
+#userDropdown .nav-tab.active,
+#userDropdown .nav-tab:hover {
+    color: var(--primary-color) !important;
+}
 #transactionCrudModal .modal-content > #crudTransactionDesc {
     padding-left: 12px;
     padding-right: 12px;
@@ -539,6 +756,37 @@ body {
     padding-bottom: 0;
     box-shadow: 0 2px 8px #0001;
 }
+
+/* Esconde nav-tabs no mobile, mostra mobile-nav */
+@media (max-width: 700px) {
+    .nav-tabs {
+        display: none !important;
+    }
+    .mobile-nav {
+        display: flex !important;
+        flex-direction: column;
+        gap: 2px;
+        margin: 8px 0;
+    }
+    .mobile-nav .nav-tab {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        font-size: 1rem;
+        padding: 10px 12px;
+        border: none;
+        background: none;
+        color: var(--text-primary);
+        border-radius: 6px;
+        transition: background 0.2s;
+    }
+    .mobile-nav .nav-tab.active,
+    .mobile-nav .nav-tab:hover {
+        background: var(--bg-tertiary);
+        color: var(--primary-color);
+    }
+}
 /* Espaço para o conteúdo não ficar atrás da barra fixa */
 /* Espaço para header + navegação fixa */
 /* .main-content { margin-top: 112px; } */
@@ -582,8 +830,8 @@ body {
 /* Conteúdo Principal */
 .main-content {
     max-width: 1200px;
-    margin: 60px auto 0 auto;
-    padding: 10px 8px 0 8px;
+    margin: 16px auto 0 auto;
+    padding: 4px 8px 0 8px;
 }
 
 .page {
