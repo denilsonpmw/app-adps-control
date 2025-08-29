@@ -1850,8 +1850,79 @@ printReportsTable() {
                 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-                    
+                    /* Ajuste para impressão em A4 */
                     @media print {
+                        html, body {
+                            width: 210mm;
+                            height: 297mm;
+                            max-width: 210mm;
+                            max-height: 297mm;
+                            margin: 0 auto !important;
+                            padding: 0 !important;
+                            overflow: hidden;
+                        }
+                        .receipt-container {
+                            width: 190mm !important;
+                            max-width: 190mm !important;
+                            min-width: 0 !important;
+                            margin: 0 auto !important;
+                            box-shadow: none !important;
+                            border-radius: 0 !important;
+                            page-break-inside: avoid;
+                        }
+                        .receipt-header {
+                            padding: 24px 16px 18px !important;
+                        }
+                        .receipt-body {
+                            padding: 18px 12px !important;
+                        }
+                        .receipt-title {
+                            font-size: 22px !important;
+                            margin-bottom: 18px !important;
+                        }
+                        .receipt-content {
+                            font-size: 13px !important;
+                            margin: 16px 0 !important;
+                        }
+                        .receipt-amount-container {
+                            margin: 18px 0 !important;
+                            padding: 14px !important;
+                            border-radius: 10px !important;
+                        }
+                        .receipt-amount {
+                            font-size: 22px !important;
+                        }
+                        .receipt-details {
+                            margin: 14px 0 !important;
+                            padding: 10px !important;
+                            border-radius: 8px !important;
+                        }
+                        .receipt-detail {
+                            margin: 6px 0 !important;
+                            padding: 6px 0 !important;
+                        }
+                        .receipt-footer {
+                            margin-top: 18px !important;
+                            padding-top: 10px !important;
+                        }
+                        .receipt-footer-note {
+                            padding: 8px !important;
+                            margin-top: 8px !important;
+                        }
+                        .church-logo {
+                            max-width: 60px !important;
+                            max-height: 60px !important;
+                            margin-bottom: 10px !important;
+                            padding: 4px !important;
+                        }
+                        .watermark {
+                            font-size: 48px !important;
+                        }
+                        .receipt-number, .receipt-date {
+                            font-size: 10px !important;
+                            padding: 4px 8px !important;
+                        }
+                    }
                         body { 
                             margin: 0; 
                             padding: 0; 
