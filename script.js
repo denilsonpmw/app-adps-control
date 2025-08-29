@@ -1712,9 +1712,17 @@ printReportsTable() {
             body: JSON.stringify(updated)
         })
         .then(async res => {
+            const contentType = res.headers.get('content-type') || '';
             if (!res.ok) {
+                // Se não for JSON, mostra erro genérico
+                if (!contentType.includes('application/json')) {
+                    throw new Error('Erro interno no servidor. Tente novamente ou contate o suporte.');
+                }
                 const data = await res.json();
                 throw new Error(data.error || 'Erro ao salvar dados da igreja');
+            }
+            if (!contentType.includes('application/json')) {
+                throw new Error('Resposta inesperada do servidor.');
             }
             return res.json();
         })
