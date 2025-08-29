@@ -1,11 +1,13 @@
 // Detecta URL do backend automaticamente
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3001'
-    : '';
+// Detecta ambiente e define a URL base da API automaticamente
+const API_BASE_URL =
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:3001'
+        : 'https://adps-finance.up.railway.app';
 // Carregamento dinâmico dos caixas do backend
 let CAIXAS = {};
 async function loadCaixas() {
-    const res = await fetch('http://localhost:3001/api/caixas');
+    const res = await fetch(`${API_BASE_URL}/api/caixas`);
     const caixasArr = await res.json();
     CAIXAS = {};
     caixasArr.forEach(caixa => {
@@ -37,7 +39,7 @@ class ChurchFinanceApp {
     // Carregar recibos do backend
     async loadReceipts() {
         try {
-            const res = await fetch('http://localhost:3001/api/receipts');
+            const res = await fetch(`${API_BASE_URL}/api/receipts`);
             if (!res.ok) throw new Error('Error loading receipts');
             this.receipts = await res.json();
         } catch (err) {
@@ -139,7 +141,7 @@ class ChurchFinanceApp {
     // Carregar transações do backend
     async loadTransactions() {
         try {
-            const res = await fetch('http://localhost:3001/api/transactions');
+            const res = await fetch(`${API_BASE_URL}/api/transactions`);
             if (!res.ok) throw new Error('Error loading transactions');
             this.transactions = await res.json();
         } catch (err) {
@@ -151,7 +153,7 @@ class ChurchFinanceApp {
     // Carrega dados da igreja do backend
     async loadChurchData() {
         try {
-            const res = await fetch('http://localhost:3001/api/church');
+            const res = await fetch(`${API_BASE_URL}/api/church`);
             if (!res.ok) throw new Error('Erro ao carregar dados da igreja');
             const data = await res.json();
             if (data) {
@@ -556,7 +558,7 @@ class ChurchFinanceApp {
 
     async addTransaction(transaction) {
         try {
-            const res = await fetch('http://localhost:3001/api/transactions', {
+            const res = await fetch(`${API_BASE_URL}/api/transactions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(transaction)
@@ -579,7 +581,7 @@ class ChurchFinanceApp {
                 user: this.currentUser,
                 transactionId: newTransaction.id
             };
-            const receiptRes = await fetch('http://localhost:3001/api/receipts', {
+            const receiptRes = await fetch(`${API_BASE_URL}/api/receipts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(receipt)
@@ -599,7 +601,7 @@ class ChurchFinanceApp {
 
     async updateTransaction(id, transaction) {
     try {
-        const res = await fetch(`http://localhost:3001/api/transactions/${id}` , {
+    const res = await fetch(`${API_BASE_URL}/api/transactions/${id}` , {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(transaction)
@@ -636,7 +638,7 @@ class ChurchFinanceApp {
 
     async addReceipt(receipt) {
         try {
-            const res = await fetch('http://localhost:3001/api/receipts', {
+            const res = await fetch(`${API_BASE_URL}/api/receipts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(receipt)
@@ -925,7 +927,7 @@ class ChurchFinanceApp {
                         return;
                     }
                     try {
-                        const res = await fetch(`http://localhost:3001/api/transactions/${transaction.id}`);
+                        const res = await fetch(`${API_BASE_URL}/api/transactions/${transaction.id}`);
                         if (!res.ok) throw new Error('Transação não encontrada');
                         const data = await res.json();
                         this.openTransactionCrudModal(data);
@@ -960,7 +962,7 @@ class ChurchFinanceApp {
 
             // Busca a transação mais atualizada do backend
             try {
-                const res = await fetch(`http://localhost:3001/api/transactions/${transaction.id}`);
+                const res = await fetch(`${API_BASE_URL}/api/transactions/${transaction.id}`);
                 if (!res.ok) throw new Error('Transação não encontrada');
                 const data = await res.json();
                 // Preenche o formulário de transação para edição
@@ -977,7 +979,7 @@ class ChurchFinanceApp {
         deleteBtn.onclick = async () => {
             if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
             try {
-                const res = await fetch(`http://localhost:3001/api/transactions/${transaction.id}`, { method: 'DELETE' });
+                const res = await fetch(`${API_BASE_URL}/api/transactions/${transaction.id}`, { method: 'DELETE' });
                 if (!res.ok) {
                     const data = await res.json();
                     this.showNotification(data.error || 'Erro ao excluir transação', 'error');
@@ -1481,7 +1483,7 @@ printReportsTable() {
         const caixaTableBody = document.getElementById('caixaTableBody');
         if (caixaTableBody) caixaTableBody.innerHTML = '<tr><td colspan="3">Carregando...</td></tr>';
         try {
-            const res = await fetch('http://localhost:3001/api/caixas');
+            const res = await fetch(`${API_BASE_URL}/api/caixas`);
             const caixasArr = await res.json();
             this.caixas = {};
             if (caixaTableBody) caixaTableBody.innerHTML = '';
@@ -1506,7 +1508,7 @@ printReportsTable() {
         const name = caixaNameInput.value.trim();
         if (!name) return;
         try {
-            const res = await fetch('http://localhost:3001/api/caixas', {
+            const res = await fetch(`${API_BASE_URL}/api/caixas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -1527,7 +1529,7 @@ printReportsTable() {
     async editCaixa(key) {
         // Busca o nome e key real do backend
         try {
-            const res = await fetch('http://localhost:3001/api/caixas');
+            const res = await fetch(`${API_BASE_URL}/api/caixas`);
             const caixasArr = await res.json();
             const caixa = caixasArr.find(c => c.key === key);
             if (!caixa) {
@@ -1551,7 +1553,7 @@ printReportsTable() {
         if (!name || !this.editingCaixaKey) return;
         try {
             // Sempre usa a key original, não gera nova key!
-            const res = await fetch(`http://localhost:3001/api/caixas/${this.editingCaixaKey}`, {
+            const res = await fetch(`${API_BASE_URL}/api/caixas/${this.editingCaixaKey}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -1576,7 +1578,7 @@ printReportsTable() {
     async deleteCaixa(key) {
         if (!confirm('Tem certeza que deseja excluir este caixa?')) return;
         try {
-            const res = await fetch(`http://localhost:3001/api/caixas/${key}`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE_URL}/api/caixas/${key}`, { method: 'DELETE' });
             if (!res.ok) {
                 const data = await res.json();
                 this.showNotification(data.error || 'Erro ao excluir caixa', 'error');
@@ -1706,7 +1708,7 @@ printReportsTable() {
             cnpj: document.getElementById('churchCnpj').value,
             logoUrl: this.churchLogo || null
         };
-        fetch('http://localhost:3001/api/church', {
+    fetch(`${API_BASE_URL}/api/church`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updated)
