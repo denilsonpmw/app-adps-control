@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ADPS Control Financeiro</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -413,8 +414,15 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
-    <script src="init-app.js"></script>
+        <script src="script.js"></script>
+        <script src="init-app.js"></script>
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('service-worker.js');
+                });
+            }
+        </script>
 
     <!-- Modal de opções CRUD para transação (deve ficar no final do body para sempre existir no DOM) -->
     <div id="transactionCrudModal" class="modal">
