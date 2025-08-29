@@ -265,9 +265,40 @@ app.get('/api/church', async (req, res) => {
   res.json(data);
 });
 app.put('/api/church', async (req, res) => {
-  const data = req.body;
-  const church = await prisma.churchData.update({ where: { id: data.id }, data });
-  res.json(church);
+  try {
+    const input = req.body;
+    // Busca o registro existente (assume que só existe 1)
+    let church = await prisma.churchData.findFirst();
+    if (!church) {
+      // Se não existir, cria um novo
+      church = await prisma.churchData.create({
+        data: {
+          name: input.name,
+          address: input.address,
+          phone: input.phone,
+          email: input.email,
+          cnpj: input.cnpj,
+          logoUrl: input.logoUrl
+        }
+      });
+      return res.json(church);
+    }
+    // Atualiza o registro existente
+    const updated = await prisma.churchData.update({
+      where: { id: church.id },
+      data: {
+        name: input.name,
+        address: input.address,
+        phone: input.phone,
+        email: input.email,
+        cnpj: input.cnpj,
+        logoUrl: input.logoUrl
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar dados da igreja', details: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 3001;
