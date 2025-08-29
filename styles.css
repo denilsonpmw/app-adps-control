@@ -178,6 +178,7 @@
     font-size: 1.25rem !important;
     min-width: 22px;
     text-align: center;
+    margin-right: 4px;
 }
 
 /* Botão Sair: texto grande, forte, cor principal */
@@ -208,6 +209,18 @@
     font-size: 0.95rem;
     font-weight: 400;
     color: var(--text-secondary) !important;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    transition: background 0.2s;
+    text-align: left;
+    justify-content: flex-start;
 }
 .mobile-nav .nav-tab.active,
 .mobile-nav .nav-tab:hover,
