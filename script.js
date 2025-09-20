@@ -517,14 +517,6 @@ class ChurchFinanceApp {
     if (date) {
         date = date + 'T03:00:00.000Z';
     }
-    let transferTo = undefined;
-    if (type === 'transferencia') {
-        transferTo = formData.get('transferToCaixa');
-        if (!transferTo || transferTo === caixa) {
-            this.showNotification('Selecione um caixa destino diferente', 'error');
-            return;
-        }
-    }
     const transaction = {
         type,
         caixa,
@@ -532,8 +524,7 @@ class ChurchFinanceApp {
         person,
         amount,
         date,
-        user: this.currentUser,
-        ...(transferTo ? { transferTo } : {})
+        user: this.currentUser
     };
     if (this.editingTransactionId) {
         // Edição
@@ -1183,10 +1174,15 @@ class ChurchFinanceApp {
 
         if (caixaFilter && caixaFilter !== 'todos') {
             filteredTransactions = filteredTransactions.filter(t => {
+                // Considera transações do caixa selecionado (origem ou destino), tratando diferentes formatos
                 if (t.caixa && typeof t.caixa === 'object') {
-                    return t.caixa.key === caixaFilter;
+                    return t.caixa.key === caixaFilter || t.caixa.id === caixaFilter || t.caixa.name === caixaFilter;
+                } else if (t.caixa) {
+                    return t.caixa === caixaFilter;
+                } else if (t.caixaId) {
+                    return t.caixaId === caixaFilter;
                 }
-                return t.caixa === caixaFilter;
+                return false;
             });
         }
         // Permitir também o valor vazio como "todos"
@@ -1213,7 +1209,6 @@ class ChurchFinanceApp {
             '<th>Caixa</th>' +
             '<th>Descrição</th>' +
             '<th>Valor</th>' +
-            '<th>Transferência Para</th>' +
             '</tr></thead><tbody>';
         for (var i = 0; i < transactions.length; i++) {
             var t = transactions[i];
@@ -1223,21 +1218,12 @@ class ChurchFinanceApp {
             } else {
                 caixaNome = CAIXAS[t.caixa] || '';
             }
-            var transferNome = '';
-            if (t.type === 'transferencia' && t.transferTo) {
-                if (typeof t.transferTo === 'object') {
-                    transferNome = t.transferTo.name || CAIXAS[t.transferTo.key] || CAIXAS[t.transferTo.id] || '';
-                } else {
-                    transferNome = CAIXAS[t.transferTo] || '';
-                }
-            }
             tableHtml += '<tr>';
             tableHtml += '<td>' + this.formatDate(t.date) + '</td>';
             tableHtml += '<td>' + (t.type.charAt(0).toUpperCase() + t.type.slice(1)) + '</td>';
             tableHtml += '<td>' + caixaNome + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
             tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
-            tableHtml += '<td>' + (transferNome || '-') + '</td>';
             tableHtml += '</tr>';
         }
         tableHtml += '</tbody></table></div>';
@@ -1646,41 +1632,60 @@ printReportsTable() {
     const brt = new Date(utc - (3 * 60 * 60000));
     return brt.toLocaleDateString('pt-BR');
     }
-
     showNotification(message, type = 'info') {
-        // Criar notificação simples
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 10000;
-            animation: slideInRight 0.3s ease-out;
-            max-width: 300px;
-        `;
+        // Use a single bottom-centered container for toasts so they never overlap
+        // the user avatar. The container has pointer-events:none so it doesn't
+        // block clicks; individual toasts are pointer-events:auto so they can
+        // be interactive if needed.
+        let container = document.getElementById('appToastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'appToastContainer';
+            container.className = 'app-toast-container';
+            // Always append to document.body to avoid being inside any positioned ancestor
+            // that could create a stacking context and cause toasts to appear above the avatar.
+            document.body.appendChild(container);
+        } else {
+            // If container exists but for some reason is not a direct child of body, re-append it.
+            if (container.parentNode !== document.body) document.body.appendChild(container);
+        }
 
-        const colors = {
-            success: '#22c55e',
-            error: '#ef4444',
-            warning: '#f59e0b',
-            info: '#3b82f6'
-        };
+        // Force an explicit low z-index inline to avoid CSS cascade issues / caching.
+        // The header/avatar will have a higher z-index so the toast stays visually behind it.
+        try {
+            container.style.position = 'fixed';
+            container.style.zIndex = '50';
+            container.style.right = '24px';
+            container.style.bottom = '24px';
+            // ensure alignment to right
+            container.style.left = 'auto';
+            container.style.transform = 'none';
+        } catch (e) {
+            // ignore style assignment errors in exotic environments
+        }
 
-        notification.style.background = colors[type] || colors.info;
-        notification.textContent = message;
+        const toast = document.createElement('div');
+        toast.className = `app-toast ${type || 'info'}`;
+        toast.textContent = message;
 
-        document.body.appendChild(notification);
+        container.appendChild(toast);
 
+        // Trigger show animation
+        requestAnimationFrame(() => {
+            toast.classList.add('visible');
+        });
+
+        // Auto-hide
         setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            toast.classList.remove('visible');
             setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
-        }, 3000);
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+                // remove container when empty
+                if (container && container.children.length === 0 && container.parentNode) {
+                    container.parentNode.removeChild(container);
+                }
+            }, 350);
+        }, 3500);
     }
 
     // Configurações

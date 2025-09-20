@@ -656,7 +656,8 @@ body {
     box-shadow: var(--shadow);
     position: sticky;
     top: 0;
-    z-index: 100;
+    /* Very high to guarantee header and avatar overlay other UI (toasts, etc.) */
+    z-index: 10050;
     transition: var(--transition);
 }
 
@@ -693,7 +694,8 @@ body {
     padding: 8px 12px;
     border-radius: var(--border-radius-sm);
     transition: var(--transition);
-    z-index: 3001;
+    /* Keep above toasts and most UI elements */
+    z-index: 10051;
 }
 
 
@@ -721,7 +723,8 @@ body {
     transform: translateY(-10px);
     transition: var(--transition);
     pointer-events: none;
-    z-index: 4000;
+    /* Dropdown should be above modals */
+    z-index: 10060;
 }
 .user-menu.open .user-dropdown {
     opacity: 1;
@@ -750,6 +753,43 @@ body {
     background: var(--bg-tertiary);
     color: var(--danger-color);
 }
+
+/* Toasts (bottom-center) */
+.app-toast-container {
+    position: fixed;
+    right: 24px; /* bottom-right */
+    bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end; /* align to the right edge */
+    /* Keep toasts visually below the header/avatar. The header creates a stacking
+       context so use a low z-index here to ensure the avatar remains on top. */
+    z-index: 50;
+    pointer-events: none; /* allow clicks to pass through when no toast present */
+}
+.app-toast {
+    pointer-events: auto;
+    background: var(--info-color);
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    max-width: 90vw;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    font-size: 15px;
+}
+.app-toast.visible {
+    opacity: 0.98;
+    transform: translateY(0);
+}
+.app-toast.success { background: var(--success-color); }
+.app-toast.error { background: var(--danger-color); }
+.app-toast.warning { background: var(--warning-color); color: #222; }
+.app-toast.info { background: var(--info-color); }
 
 /* Navegação */
 .nav-tabs {
