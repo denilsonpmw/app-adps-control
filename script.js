@@ -588,6 +588,12 @@ class ChurchFinanceApp {
                     this.renderReports();
                 });
                 break;
+            case 'users':
+                // Carregar usuários quando acessar a página
+                if (userManager) {
+                    userManager.loadUsers();
+                }
+                break;
             case 'settings':
                 this.renderSettings();
                 break;
@@ -2552,4 +2558,275 @@ printReportsTable() {
         `;
     }
 }
+
+// ============ GERENCIAMENTO DE USUÁRIOS ============
+
+class UserManager {
+    constructor() {
+        this.currentEditingUser = null;
+        this.initEventListeners();
+    }
+
+    initEventListeners() {
+        // Botões da seção de usuários
+        document.getElementById('newUserBtn')?.addEventListener('click', () => this.openNewUserModal());
+        document.getElementById('refreshUsersBtn')?.addEventListener('click', () => this.loadUsers());
+        
+        // Modal de usuário
+        document.getElementById('cancelUser')?.addEventListener('click', () => this.closeUserModal());
+        document.getElementById('userForm')?.addEventListener('submit', (e) => this.handleUserSubmit(e));
+        
+        // Fechar modal ao clicar no X
+        document.querySelector('#userModal .modal-close')?.addEventListener('click', () => this.closeUserModal());
+        
+        // Fechar modal ao clicar fora
+        document.getElementById('userModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'userModal') this.closeUserModal();
+        });
+    }
+
+    async loadUsers() {
+        try {
+            const tableBody = document.getElementById('usersTableBody');
+            if (!tableBody) return;
+
+            // Mostrar loading
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="users-loading">
+                        <i class="fas fa-spinner fa-spin"></i> Carregando usuários...
+                    </td>
+                </tr>
+            `;
+
+            const response = await fetch(`${API_BASE_URL}/api/users`);
+            
+            if (!response.ok) {
+                throw new Error(`Erro ${response.status}: ${response.statusText}`);
+            }
+
+            const users = await response.json();
+
+            if (users.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="users-empty">
+                            <i class="fas fa-users"></i><br>
+                            Nenhum usuário encontrado
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Renderizar usuários
+            tableBody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.name}</td>
+                    <td><span class="role-badge ${user.role}">${this.getRoleLabel(user.role)}</span></td>
+                    <td>
+                        <div class="user-actions">
+                            <button class="btn btn-edit" onclick="userManager.editUser(${user.id})" title="Editar usuário">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn btn-delete" onclick="userManager.deleteUser(${user.id}, '${user.username}')" title="Excluir usuário">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+        } catch (error) {
+            console.error('Erro ao carregar usuários:', error);
+            document.getElementById('usersTableBody').innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #dc2626; padding: 20px;">
+                        <i class="fas fa-exclamation-triangle"></i> Erro ao carregar usuários: ${error.message}
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    getRoleLabel(role) {
+        const labels = {
+            'admin': 'Administrador',
+            'tesoureiro': 'Tesoureiro',
+            'secretario': 'Secretário'
+        };
+        return labels[role] || role;
+    }
+
+    openNewUserModal() {
+        this.currentEditingUser = null;
+        document.getElementById('userModalTitle').textContent = 'Novo Usuário';
+        document.getElementById('saveUserBtn').textContent = 'Salvar';
+        document.getElementById('passwordHint').classList.add('hidden');
+        document.getElementById('userPassword').required = true;
+        
+        // Limpar formulário
+        const form = document.getElementById('userForm');
+        form.reset();
+        
+        // Mostrar modal
+        document.getElementById('userModal').style.display = 'flex';
+    }
+
+    async editUser(userId) {
+        try {
+            // Buscar dados do usuário
+            const response = await fetch(`${API_BASE_URL}/api/users`);
+            const users = await response.json();
+            const user = users.find(u => u.id === userId);
+            
+            if (!user) {
+                alert('Usuário não encontrado');
+                return;
+            }
+
+            this.currentEditingUser = user;
+            document.getElementById('userModalTitle').textContent = 'Editar Usuário';
+            document.getElementById('saveUserBtn').textContent = 'Atualizar';
+            document.getElementById('passwordHint').classList.remove('hidden');
+            document.getElementById('userPassword').required = false;
+
+            // Preencher formulário
+            document.getElementById('userUsername').value = user.username;
+            document.getElementById('userName').value = user.name;
+            document.getElementById('userPassword').value = '';
+            document.getElementById('userRole').value = user.role;
+
+            // Mostrar modal
+            document.getElementById('userModal').style.display = 'flex';
+
+        } catch (error) {
+            console.error('Erro ao carregar dados do usuário:', error);
+            alert('Erro ao carregar dados do usuário: ' + error.message);
+        }
+    }
+
+    async deleteUser(userId, username) {
+        if (!confirm(`Tem certeza que deseja excluir o usuário "${username}"?\n\nEsta ação não pode ser desfeita.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `Erro ${response.status}`);
+            }
+
+            alert('Usuário excluído com sucesso!');
+            this.loadUsers(); // Recarregar lista
+
+        } catch (error) {
+            console.error('Erro ao excluir usuário:', error);
+            alert('Erro ao excluir usuário: ' + error.message);
+        }
+    }
+
+    async handleUserSubmit(e) {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const userData = {
+            username: formData.get('username'),
+            name: formData.get('name'),
+            password: formData.get('password'),
+            role: formData.get('role')
+        };
+
+        // Validações frontend
+        if (!userData.username || userData.username.length < 3) {
+            alert('Username deve ter pelo menos 3 caracteres');
+            return;
+        }
+
+        if (!userData.name) {
+            alert('Nome é obrigatório');
+            return;
+        }
+
+        if (!userData.role) {
+            alert('Role é obrigatório');
+            return;
+        }
+
+        if (!this.currentEditingUser && (!userData.password || userData.password.length < 6)) {
+            alert('Senha deve ter pelo menos 6 caracteres');
+            return;
+        }
+
+        if (this.currentEditingUser && userData.password && userData.password.length < 6) {
+            alert('Se informada, a senha deve ter pelo menos 6 caracteres');
+            return;
+        }
+
+        try {
+            let response;
+            
+            if (this.currentEditingUser) {
+                // Editar usuário existente
+                const updateData = { ...userData };
+                if (!updateData.password) {
+                    delete updateData.password; // Não enviar senha vazia
+                }
+                
+                response = await fetch(`${API_BASE_URL}/api/users/${this.currentEditingUser.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+            } else {
+                // Criar novo usuário
+                response = await fetch(`${API_BASE_URL}/api/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+            }
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `Erro ${response.status}`);
+            }
+
+            const action = this.currentEditingUser ? 'atualizado' : 'criado';
+            alert(`Usuário ${action} com sucesso!`);
+            
+            this.closeUserModal();
+            this.loadUsers(); // Recarregar lista
+
+        } catch (error) {
+            console.error('Erro ao salvar usuário:', error);
+            alert('Erro ao salvar usuário: ' + error.message);
+        }
+    }
+
+    closeUserModal() {
+        document.getElementById('userModal').style.display = 'none';
+        this.currentEditingUser = null;
+    }
+}
+
+// Instância global do gerenciador de usuários
+let userManager;
+
+// Inicializar quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    userManager = new UserManager();
+});
 

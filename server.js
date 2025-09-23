@@ -52,8 +52,198 @@ app.post('/api/auth', async (req, res) => {
 
 // Usuários
 app.get('/api/users', async (req, res) => {
-  const users = await prisma.user.findMany();
-  res.json(users);
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        role: true,
+        // Não incluir passwordHash por segurança
+      }
+    });
+    res.json(users);
+  } catch (err) {
+    console.error('[users] error getting users', err);
+    res.status(500).json({ error: 'Erro ao buscar usuários' });
+  }
+});
+
+// Criar usuário
+app.post('/api/users', async (req, res) => {
+  try {
+    const { username, name, password, role } = req.body;
+    
+    // Validações
+    if (!username || !name || !password || !role) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+    }
+    
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Username deve ter pelo menos 3 caracteres' });
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
+    }
+    
+    const validRoles = ['admin', 'tesoureiro', 'secretario'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Role inválido' });
+    }
+    
+    // Verificar se username já existe
+    const existingUser = await prisma.user.findUnique({ 
+      where: { username } 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username já existe' });
+    }
+    
+    // Criptografar senha
+    const passwordHash = await bcrypt.hash(password, 12);
+    
+    // Criar usuário
+    const user = await prisma.user.create({
+      data: {
+        username,
+        name,
+        passwordHash,
+        role
+      },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        role: true
+      }
+    });
+    
+    console.log(`[users] created user - username=${username} name=${name} role=${role}`);
+    res.json(user);
+  } catch (err) {
+    console.error('[users] error creating user', err);
+    res.status(500).json({ error: 'Erro ao criar usuário' });
+  }
+});
+
+// Atualizar usuário
+app.put('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, name, password, role } = req.body;
+    
+    // Validações
+    if (!username || !name || !role) {
+      return res.status(400).json({ error: 'Username, nome e role são obrigatórios' });
+    }
+    
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Username deve ter pelo menos 3 caracteres' });
+    }
+    
+    const validRoles = ['admin', 'tesoureiro', 'secretario'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Role inválido' });
+    }
+    
+    // Verificar se usuário existe
+    const existingUser = await prisma.user.findUnique({ 
+      where: { id: parseInt(id) } 
+    });
+    
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    
+    // Verificar se username já existe em outro usuário
+    const duplicateUser = await prisma.user.findFirst({
+      where: { 
+        username,
+        id: { not: parseInt(id) }
+      }
+    });
+    
+    if (duplicateUser) {
+      return res.status(400).json({ error: 'Username já existe' });
+    }
+    
+    // Preparar dados de atualização
+    const updateData = {
+      username,
+      name,
+      role
+    };
+    
+    // Só atualizar senha se foi fornecida
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
+      }
+      updateData.passwordHash = await bcrypt.hash(password, 12);
+    }
+    
+    // Atualizar usuário
+    const user = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        role: true
+      }
+    });
+    
+    console.log(`[users] updated user - id=${id} username=${username} name=${name} role=${role}`);
+    res.json(user);
+  } catch (err) {
+    console.error('[users] error updating user', err);
+    res.status(500).json({ error: 'Erro ao atualizar usuário' });
+  }
+});
+
+// Excluir usuário
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar se usuário existe
+    const existingUser = await prisma.user.findUnique({ 
+      where: { id: parseInt(id) } 
+    });
+    
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    
+    // Verificar se há transações ou recibos associados
+    const transactionCount = await prisma.transaction.count({
+      where: { userId: parseInt(id) }
+    });
+    
+    const receiptCount = await prisma.receipt.count({
+      where: { userId: parseInt(id) }
+    });
+    
+    if (transactionCount > 0 || receiptCount > 0) {
+      return res.status(400).json({ 
+        error: 'Não é possível excluir usuário com transações ou recibos associados' 
+      });
+    }
+    
+    // Excluir usuário
+    await prisma.user.delete({
+      where: { id: parseInt(id) }
+    });
+    
+    console.log(`[users] deleted user - id=${id} username=${existingUser.username}`);
+    res.json({ message: 'Usuário excluído com sucesso' });
+  } catch (err) {
+    console.error('[users] error deleting user', err);
+    res.status(500).json({ error: 'Erro ao excluir usuário' });
+  }
 });
 
 // Caixas
