@@ -2006,7 +2006,12 @@ printReportsTable() {
         const churchPhone = this.churchData.phone || '';
         const churchEmail = this.churchData.email || '';
         const churchCnpj = this.churchData.cnpj || '';
-        const currentUserName = USUARIOS[this.currentUser] || 'Sistema';
+        
+        // Garantir que temos o usuário atual (recuperar do localStorage se necessário)
+        const currentUserKey = this.currentUser || localStorage.getItem('currentUser');
+        const currentUserName = USUARIOS[currentUserKey] || 'Sistema';
+        
+        console.log('Debug - currentUser:', this.currentUser, 'localStorage:', localStorage.getItem('currentUser'), 'currentUserName:', currentUserName);
 
         // Cores padrão (entrada)
         let gradMain = 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)';
