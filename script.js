@@ -2006,6 +2006,7 @@ printReportsTable() {
         const churchPhone = this.churchData.phone || '';
         const churchEmail = this.churchData.email || '';
         const churchCnpj = this.churchData.cnpj || '';
+        const currentUserName = USUARIOS[this.currentUser] || 'Sistema';
 
         // Cores padrão (entrada)
         let gradMain = 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)';
@@ -2087,10 +2088,11 @@ printReportsTable() {
                         img { max-width: 100% !important; height: auto !important; }
                         .footer-print-btn { padding: 10px 18px; background: #1f9d55; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
                         .footer-print-btn[disabled] { opacity: 0.5; cursor: default; }
+                        /* Esconder botão apenas na impressão real */
+                        .footer-print-btn { display: none !important; }
                     }
                     /* Visualização não impressa */
                     body { margin: 0; padding: 0; background: white !important; min-height: auto; }
-                    .no-print { display: none !important; }
                     .receipt-container { box-shadow: none; margin: 0; border-radius: 0; max-width: none; }
                     .receipt-header { border-radius: 0; }
                     .receipt-body { padding: 30px 20px; }
@@ -2437,9 +2439,9 @@ printReportsTable() {
                                                  <div class="receipt-footer">
                              <div class="receipt-footer-note">
                                      <p>Este recibo foi emitido eletronicamente pelo Sistema de Controle Financeiro da Igreja</p>
-                                     <p>Usuário: ${USUARIOS[this.currentUser] || 'Sistema'} | Data de emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+                                     <p>Usuário: ${currentUserName} | Data de emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
                                      <div style="margin-top:12px;text-align:center;">
-                                         <button id="receiptPrintBtn" class="footer-print-btn no-print" disabled>IMPRIMIR RECIBO</button>
+                                         <button id="receiptPrintBtn" class="footer-print-btn" disabled>IMPRIMIR RECIBO</button>
                                      </div>
                                  </div>
                          </div>
