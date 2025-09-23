@@ -1,0 +1,31 @@
+# Template de mensagem de commit (em Português do Brasil)
+# Por favor, escreva as mensagens em Português do Brasil (pt-BR).
+# Siga o formato sugerido abaixo para manter consistência:
+#
+# tipo(escopo): descrição curta
+#
+# Corpo opcional com explicação mais detalhada (em pt-BR).
+# - Use frases curtas e imperativas.
+# - Explique o porquê da mudança, não apenas o quê.
+# - Referencie issues com "refs #123" ou "fixes #123" quando aplicável.
+#
+# Tipos recomendados:
+# - feat: nova funcionalidade
+# - fix: correção de bug
+# - docs: documentação
+# - style: formatação/estilo (sem alteração de lógica)
+# - refactor: refatoração que não altera comportamento
+# - perf: melhoria de desempenho
+# - test: adição/ajuste de testes
+# - chore: tarefas de manutenção (dependências, scripts)
+#
+# Exemplos:
+# feat(api): adicionar endpoint de listagem de recibos
+# fix(ui): corrigir overflow no modal de transação
+# chore(deps): atualizar dependências de desenvolvimento
+
+tipo(escopo): descrição curta em pt-BR
+
+Detalhe opcional explicando a mudança e o motivo (em Português do Brasil).
+
+refs #<número-da-issue>

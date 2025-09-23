@@ -1,37 +1,29 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const bcrypt = require('bcryptjs');
 
 async function main() {
   // Usuários
-  const admin = await prisma.user.create({
-    data: {
-      username: 'admin',
-      name: 'Administrador',
-      passwordHash: 'senha_hash_admin',
-      role: 'admin',
-    },
+  const admin = await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: { passwordHash: bcrypt.hashSync('admin123', 10), name: 'Administrador', role: 'admin' },
+    create: { username: 'admin', name: 'Administrador', passwordHash: bcrypt.hashSync('admin123', 10), role: 'admin' },
   });
-  const tesoureiro = await prisma.user.create({
-    data: {
-      username: 'tesoureiro',
-      name: 'Tesoureiro',
-      passwordHash: 'senha_hash_tesoureiro',
-      role: 'tesoureiro',
-    },
+  const tesoureiro = await prisma.user.upsert({
+    where: { username: 'tesoureiro' },
+    update: { passwordHash: bcrypt.hashSync('tesoureiro123', 10), name: 'Tesoureiro', role: 'tesoureiro' },
+    create: { username: 'tesoureiro', name: 'Tesoureiro', passwordHash: bcrypt.hashSync('tesoureiro123', 10), role: 'tesoureiro' },
   });
-  const secretario = await prisma.user.create({
-    data: {
-      username: 'secretario',
-      name: 'Secretário',
-      passwordHash: 'senha_hash_secretario',
-      role: 'secretario',
-    },
+  const secretario = await prisma.user.upsert({
+    where: { username: 'secretario' },
+    update: { passwordHash: bcrypt.hashSync('secretario123', 10), name: 'Secretário', role: 'secretario' },
+    create: { username: 'secretario', name: 'Secretário', passwordHash: bcrypt.hashSync('secretario123', 10), role: 'secretario' },
   });
 
   // Caixas
-  const escolabiblica = await prisma.caixa.create({ data: { key: 'escolabiblica', name: 'Escola Bíblica' } });
-  const missoessede = await prisma.caixa.create({ data: { key: 'missoessede', name: 'Missões Sede' } });
-  const missoescampo = await prisma.caixa.create({ data: { key: 'missoescampo', name: 'Missões Campo' } });
+  const escolabiblica = await prisma.caixa.upsert({ where: { key: 'escolabiblica' }, update: { name: 'Escola Bíblica' }, create: { key: 'escolabiblica', name: 'Escola Bíblica' } });
+  const missoessede = await prisma.caixa.upsert({ where: { key: 'missoessede' }, update: { name: 'Missões Sede' }, create: { key: 'missoessede', name: 'Missões Sede' } });
+  const missoescampo = await prisma.caixa.upsert({ where: { key: 'missoescampo' }, update: { name: 'Missões Campo' }, create: { key: 'missoescampo', name: 'Missões Campo' } });
   
 
   // Dados da igreja

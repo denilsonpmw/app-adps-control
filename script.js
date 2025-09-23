@@ -1,9 +1,58 @@
 // Detecta URL do backend automaticamente
-// Detecta ambiente e define a URL base da API automaticamente
-const API_BASE_URL =
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:3001'
-        : 'https://adps-finance.up.railway.app';
+// Define a URL base da API usando a origem da página quando possível.
+// Se estiver em localhost (ou abrindo via file:// durante testes locais), aponta para o servidor local.
+const API_BASE_URL = (() => {
+    try {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:3001';
+        }
+        // Se a página foi aberta via file:// (ex.: desenvolvimento local sem servidor),
+        // apontamos para o backend local para evitar chamadas ao ambiente de produção por engano.
+        if (window.location.protocol === 'file:') {
+            return 'http://localhost:3001';
+        }
+        // Em produção/servido via HTTP(S), use a mesma origem da página
+        if (window.location.origin && window.location.origin !== 'null') {
+            return window.location.origin;
+        }
+    } catch (e) {
+        // fallback conservador
+    }
+    return 'https://adps-finance.up.railway.app';
+})();
+
+// script.js carregado
+// Helpers globais mínimos usados em vários trechos do app
+function pxPerMm(){
+    try{
+        var el = document.createElement('div');
+        el.style.width = '1mm';
+        el.style.position = 'absolute';
+        el.style.visibility = 'hidden';
+        document.body.appendChild(el);
+        var px = el.getBoundingClientRect().width || 0;
+        document.body.removeChild(el);
+        return px || (96/25.4);
+    } catch(e){ return (96/25.4); }
+}
+
+function waitImagesLoaded(){
+    try{
+        var imgs = Array.from(document.images || []);
+        if(imgs.length === 0) return Promise.resolve();
+        return Promise.all(imgs.map(function(img){
+            if(img.complete) return Promise.resolve();
+            return new Promise(function(res){ img.onload = img.onerror = res; });
+        }));
+    } catch(e){ return Promise.resolve(); }
+}
+
+function waitFontsLoaded(){
+    try{
+        if(document.fonts && document.fonts.ready) return document.fonts.ready.catch(function(){/*ignore*/});
+    } catch (e) { /* ignore */ }
+    return Promise.resolve();
+}
 // Carregamento dinâmico dos caixas do backend
 let CAIXAS = {};
 async function loadCaixas() {
@@ -45,6 +94,17 @@ class ChurchFinanceApp {
         } catch (err) {
             this.receipts = [];
             this.showNotification('Erro ao carregar recibos do servidor', 'error');
+        }
+    }
+    // Carregar transações do backend
+    async loadTransactions() {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/transactions`);
+            if (!res.ok) throw new Error('Error loading transactions');
+            this.transactions = await res.json();
+        } catch (err) {
+            this.transactions = [];
+            this.showNotification('Erro ao carregar transações do servidor', 'error');
         }
     }
     constructor() {
@@ -96,59 +156,83 @@ class ChurchFinanceApp {
         await this.loadReceipts();
     this.loadTheme();
         this.setupEventListeners();
+    // Monta navegação mobile dentro do dropdown do usuário (para mostrar opções no avatar)
+    this.mountMobileNavIntoDropdown();
         this.updateBalances();
         this.renderDashboard();
 
         // Dropdown do usuário: toggle ao clicar no avatar
         const userMenu = document.getElementById('userMenu');
         if (userMenu) {
+            // Toggle ao clicar no avatar; se o clique for dentro do dropdown, não impede a propagação
             userMenu.addEventListener('click', function (e) {
-                // Não fecha ao clicar dentro do dropdown
+                // Se clicou dentro do dropdown, não interferimos (permitir delegação de clicks nas nav-tab)
                 if (e.target.closest('.user-dropdown')) return;
+                // Caso contrário (clicou no avatar), alterna e impede propagação para evitar fechar imediatamente
                 userMenu.classList.toggle('open');
+                e.stopPropagation();
             });
-            // Fecha ao clicar fora
-            document.addEventListener('click', function (e) {
-                if (!userMenu.contains(e.target)) {
-                    userMenu.classList.remove('open');
-                }
+            // Fecha o dropdown se clicar fora
+            document.addEventListener('click', function () {
+                if (userMenu.classList.contains('open')) userMenu.classList.remove('open');
             });
-        }
+            // Não impedir a propagação: permitimos que a delegação de eventos capture cliques
+            // em elementos .nav-tab dentro do dropdown para navegar corretamente.
+            // (Se for necessário evitar fechamento ao clicar em áreas específicas, podemos tratar
+            // isso de forma seletiva no futuro.)
+            
+                        // expõe a função de scale pública para ser chamada pelo botão
+                        window.scaleToFit = function(){
+                            try{
+                                var safetyMm = 10; // 10mm de folga
+                                var pxmm = pxPerMm();
+                                var printableHeightMm = 297 - (2 * 10);
+                                var printableHeightPx = printableHeightMm * pxmm - (safetyMm * pxmm);
+                                var printableWidthMm = 210 - (2 * 10);
+                                var printableWidthPx = printableWidthMm * pxmm;
+                                var container = document.querySelector('.receipt-container');
+                                if(!container) return;
+                                container.style.transform = '';
+                                container.style.transformOrigin = 'top left';
+                                container.style.width = printableWidthPx + 'px';
+                                container.style.maxWidth = printableWidthPx + 'px';
+                                container.style.boxSizing = 'border-box';
+                                var rect = container.getBoundingClientRect();
+                                var contentHeight = rect.height;
+                                var tolerance = Math.max(4, pxmm * 1);
+                                var scale = 1;
+                                if(contentHeight > (printableHeightPx - tolerance)){
+                                    scale = (printableHeightPx - tolerance) / contentHeight;
+                                }
+                                scale = Math.min(1, scale);
+                                if(scale < 1){
+                                    container.style.transform = 'scale(' + scale + ')';
+                                    container.style.transformOrigin = 'top left';
+                                    document.body.style.height = (printableHeightPx + safetyMm*pxmm) + 'px';
+                                    document.documentElement.style.height = (printableHeightPx + safetyMm*pxmm) + 'px';
+                                    document.body.style.width = printableWidthPx + 'px';
+                                    document.documentElement.style.width = printableWidthPx + 'px';
+                                    container.style.top = '10mm';
+                                    container.style.left = '10mm';
+                                } else {
+                                    document.body.style.height = 'auto';
+                                    document.documentElement.style.height = 'auto';
+                                    container.style.top = '10mm';
+                                    container.style.left = '10mm';
+                                }
+                            }catch(e){/*ignore*/}
+                        };
 
-        // Navegação: menus sempre no avatar (dropdown)
-        const mobileNav = document.getElementById('mobileNavMenu');
-        const mobileNavContainer = document.getElementById('mobileNavContainer');
-        if (mobileNav && mobileNavContainer) {
-            mobileNavContainer.innerHTML = '';
-            mobileNavContainer.appendChild(mobileNav);
-        }
-        if (mobileNav) {
-            mobileNav.style.display = 'block';
-            mobileNav.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    document.querySelectorAll('.mobile-nav .nav-tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    const page = tab.getAttribute('data-page');
-                    if (page) {
-                        this.switchPage(page);
-                        userMenu.classList.remove('open');
+                        // espera imagens e fontes carregarem e só então habilita o botão
+                        Promise.all([waitImagesLoaded(), waitFontsLoaded()]).then(function(){
+                            // pequena espera para layout estabilizar
+                            setTimeout(function(){
+                                var btn = document.querySelector('.footer-print-btn');
+                                if(btn) btn.disabled = false;
+                            }, 120);
+                        });
                     }
-                });
-            });
-        }
-    }
-
-    // Carregar transações do backend
-    async loadTransactions() {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/transactions`);
-            if (!res.ok) throw new Error('Error loading transactions');
-            this.transactions = await res.json();
-        } catch (err) {
-            this.transactions = [];
-            this.showNotification('Erro ao carregar transações do servidor', 'error');
-        }
-    }
+                }
 
     // Carrega dados da igreja do backend
     async loadChurchData() {
@@ -174,6 +258,36 @@ class ChurchFinanceApp {
             this.churchLogo = null;
             this.updateLogoPreview();
             this.showNotification('Erro ao carregar dados da igreja', 'error');
+        }
+    }
+
+    // Clona as nav-tabs do menu mobile para o container dentro do dropdown do usuário
+    mountMobileNavIntoDropdown() {
+        try {
+            const container = document.getElementById('mobileNavContainer');
+            const mobileMenu = document.getElementById('mobileNavMenu');
+            if (!container || !mobileMenu) return;
+            // Limpa container
+            container.innerHTML = '';
+            // Clona cada botão (.nav-tab) e adiciona ao container
+            const tabs = Array.from(mobileMenu.querySelectorAll('.nav-tab'));
+            tabs.forEach(tab => {
+                const clone = tab.cloneNode(true);
+                // Remove display:none caso exista
+                clone.style.display = '';
+                container.appendChild(clone);
+            });
+            // Adiciona listener local para diagnosticar cliques (não substitui delegação global)
+            try {
+                container.addEventListener('click', function(ev){
+                    const nt = ev.target.closest('.nav-tab');
+                    if(nt){
+                        // diagnostic removed: mobileNavContainer click
+                    }
+                });
+            } catch(e){}
+        } catch (e) {
+            // ignore
         }
     }
 
@@ -247,6 +361,14 @@ class ChurchFinanceApp {
             tab.addEventListener('click', (e) => {
                 this.switchPage(e.target.closest('.nav-tab').dataset.page);
             });
+        });
+        // Event delegation: captura cliques em .nav-tab que possam ser inseridos dinamicamente
+        document.addEventListener('click', (e) => {
+            const navTab = e.target.closest('.nav-tab');
+            if (navTab) {
+                e.preventDefault();
+                this.switchPage(navTab.dataset.page);
+            }
         });
 
         // Modais
@@ -369,13 +491,27 @@ class ChurchFinanceApp {
         }
 
         // Envia username e senha para o backend validar
-    fetch(`${API_BASE_URL}/api/auth`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: userSelect.value, password })
-        })
-        .then(res => res.json())
-        .then(result => {
+        try {
+            // diagnostic removed: auth attempt from frontend
+        } catch (e) { /* ignore */ }
+        fetch(`${API_BASE_URL}/api/auth`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: userSelect.value, password })
+            })
+            .then(res => {
+                // diagnostic removed: auth response status
+                // Tentar parse seguro: se falhar, ler texto para diagn f3stico
+                return res.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        // resposta inválida do servidor ao autenticar
+                        return { success: false, message: 'Resposta do servidor inválida' };
+                    }
+                });
+            })
+            .then(result => {
             if (!result.success) {
                 this.showNotification(result.message || 'Usuário ou senha inválidos', 'error');
                 return;
@@ -390,8 +526,9 @@ class ChurchFinanceApp {
             this.switchScreen('mainApp');
             this.showNotification(`Bem-vindo, ${result.user.name}!`, 'success');
         })
-        .catch(() => {
-            this.showNotification('Erro ao autenticar', 'error');
+        .catch((err) => {
+            // Falha de rede ao chamar /api/auth
+            this.showNotification('Erro ao autenticar (network)', 'error');
         });
 
     }
@@ -417,6 +554,7 @@ class ChurchFinanceApp {
     }
 
     switchPage(pageId) {
+        // diagnostic removed: switchPage called
         // Atualizar navegação
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -1272,17 +1410,71 @@ printReportsTable() {
                     tr:nth-child(odd) { background: #fff; }
                     h2 { margin-bottom: 0; }
                     table, th, td { table-layout: auto; }
+                    .popup-print-btn { padding: 8px 14px; background: #14532d; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+                    .popup-print-btn[disabled] { opacity: 0.5; cursor: default; }
                 </style>
+                <script>
+                    // Auto-scale helper for popup; no auto-printing — user clicks the print button
+                    function waitForImagesLoad(doc, callback) {
+                        const imgs = Array.from(doc.images || []);
+                        if (imgs.length === 0) return callback();
+                        let loaded = 0;
+                        imgs.forEach(img => {
+                            if (img.complete) {
+                                loaded++;
+                                if (loaded === imgs.length) callback();
+                            } else {
+                                img.addEventListener('load', () => { loaded++; if (loaded === imgs.length) callback(); });
+                                img.addEventListener('error', () => { loaded++; if (loaded === imgs.length) callback(); });
+                            }
+                        });
+                    }
+                    window.addEventListener('DOMContentLoaded', () => {
+                        try {
+                            waitForImagesLoad(document, () => {
+                                // compute printable height (A4 height - margins)
+                                const dpi = 96; // fallback
+                                const mmToPx = mm => Math.round(mm * dpi / 25.4);
+                                const printableHeightPx = mmToPx(297 - 20);
+                                const container = document.querySelector('.receipt-container');
+                                if (container) {
+                                    const contentHeight = container.scrollHeight;
+                                    if (contentHeight > printableHeightPx) {
+                                        const scale = printableHeightPx / contentHeight;
+                                        container.style.transform = 'scale(' + scale + ')';
+                                        container.style.transformOrigin = 'top left';
+                                        document.body.style.width = Math.round(210 * scale) + 'mm';
+                                    }
+                                }
+                                // habilita o botão de impressão da popup
+                                var btn = document.getElementById('popupPrintBtn');
+                                if (btn) btn.disabled = false;
+                            });
+                        } catch (e) { try{ var btn = document.getElementById('popupPrintBtn'); if(btn) btn.disabled = false; }catch(e){} }
+                    });
+                </script>
             </head>
             <body>
                 ${headerHtml}
+                <div style="text-align:right;margin:12px 0;">
+                    <button id="popupPrintBtn" class="popup-print-btn" disabled>IMPRIMIR RELATÓRIO</button>
+                </div>
                 ${container.innerHTML}
+                <script>
+                    (function(){
+                        var btn = document.getElementById('popupPrintBtn');
+                        if(!btn) return;
+                        btn.addEventListener('click', function(){
+                            if(window.focus) window.focus();
+                            window.print();
+                        });
+                    })();
+                </script>
             </body>
             </html>
         `);
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => printWindow.print(), 300);
     }
     renderReportsChart(transactions) {
         const container = document.getElementById('reportsChart');
@@ -1803,12 +1995,9 @@ printReportsTable() {
         
         printWindow.document.write(printContent);
         printWindow.document.close();
-        
-        // Aguardar o carregamento das imagens antes de imprimir
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 1000);
+        // Do not invoke print from the opener; the generated HTML includes a script
+        // that scales the content to the printable A4 area and calls window.print()
+        // after images have loaded. This avoids double-printing and ensures correct scaling.
     }
 
     generateReceiptHTML(receipt) {
@@ -1850,99 +2039,64 @@ printReportsTable() {
                 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-                    /* Ajuste para impressão em A4 */
+                    /* Forçar A4 retrato na impressão e ajustar o conteúdo à área imprimível */
+                    @page { size: A4 portrait; margin: 10mm; }
                     @media print {
                         html, body {
                             width: 210mm;
                             height: 297mm;
-                            max-width: 210mm;
-                            max-height: 297mm;
-                            margin: 0 auto !important;
-                            padding: 0 !important;
-                            overflow: hidden;
+                            margin: 0;
+                            padding: 0;
+                            background: white !important;
+                            -webkit-print-color-adjust: exact;
+                            overflow: hidden; /* importante para evitar criação de páginas extras */
                         }
+                        /* Posiciona o container exatamente dentro da área imprimível
+                           (margens definidas em @page: 10mm) e limita sua altura para
+                           evitar quebra automática em múltiplas páginas */
                         .receipt-container {
-                            width: 190mm !important;
-                            max-width: 190mm !important;
-                            min-width: 0 !important;
-                            margin: 0 auto !important;
+                            position: absolute !important;
+                            top: 10mm !important;
+                            left: 10mm !important;
+                            right: 10mm !important;
+                            height: calc(297mm - 20mm) !important; /* área imprimível vertical */
+                            width: calc(210mm - 20mm) !important; /* área imprimível horizontal */
+                            max-width: calc(210mm - 20mm) !important;
+                            margin: 0 !important;
                             box-shadow: none !important;
                             border-radius: 0 !important;
                             page-break-inside: avoid;
+                            overflow: hidden !important; /* esconde conteúdo que exceder após qualquer rounding */
+                            transform-origin: top left;
                         }
-                        .receipt-header {
-                            padding: 24px 16px 18px !important;
-                        }
-                        .receipt-body {
-                            padding: 18px 12px !important;
-                        }
-                        .receipt-title {
-                            font-size: 22px !important;
-                            margin-bottom: 18px !important;
-                        }
-                        .receipt-content {
-                            font-size: 13px !important;
-                            margin: 16px 0 !important;
-                        }
-                        .receipt-amount-container {
-                            margin: 18px 0 !important;
-                            padding: 14px !important;
-                            border-radius: 10px !important;
-                        }
-                        .receipt-amount {
-                            font-size: 22px !important;
-                        }
-                        .receipt-details {
-                            margin: 14px 0 !important;
-                            padding: 10px !important;
-                            border-radius: 8px !important;
-                        }
-                        .receipt-detail {
-                            margin: 6px 0 !important;
-                            padding: 6px 0 !important;
-                        }
-                        .receipt-footer {
-                            margin-top: 18px !important;
-                            padding-top: 10px !important;
-                        }
-                        .receipt-footer-note {
-                            padding: 8px !important;
-                            margin-top: 8px !important;
-                        }
-                        .church-logo {
-                            max-width: 60px !important;
-                            max-height: 60px !important;
-                            margin-bottom: 10px !important;
-                            padding: 4px !important;
-                        }
-                        .watermark {
-                            font-size: 48px !important;
-                        }
-                        .receipt-number, .receipt-date {
-                            font-size: 10px !important;
-                            padding: 4px 8px !important;
-                        }
+                        /* Escala automática: se o conteúdo exceder a altura, o navegador deve ajustar conforme settings da impressora.
+                           Aqui garantimos tipografia e espaçamentos adequados para A4 */
+                        .receipt-header { padding: 24px 16px 18px !important; }
+                        .receipt-body { padding: 18px 12px !important; }
+                        .receipt-title { font-size: 22px !important; margin-bottom: 18px !important; }
+                        .receipt-content { font-size: 13px !important; margin: 16px 0 !important; }
+                        .receipt-amount-container { margin: 18px 0 !important; padding: 14px !important; border-radius: 10px !important; }
+                        .receipt-amount { font-size: 22px !important; }
+                        .receipt-details { margin: 14px 0 !important; padding: 10px !important; border-radius: 8px !important; }
+                        .receipt-detail { margin: 6px 0 !important; padding: 6px 0 !important; }
+                        .receipt-footer { margin-top: 8px !important; padding-top: 8px !important; }
+                        .receipt-footer-note { padding: 8px !important; margin-top: 8px !important; }
+                        .church-logo { max-width: 60px !important; max-height: 60px !important; margin-bottom: 10px !important; padding: 4px !important; }
+                        .watermark { font-size: 48px !important; }
+                        .receipt-number, .receipt-date { font-size: 10px !important; padding: 4px 8px !important; }
+                        img { max-width: 100% !important; height: auto !important; }
+                        .footer-print-btn { padding: 10px 18px; background: #1f9d55; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+                        .footer-print-btn[disabled] { opacity: 0.5; cursor: default; }
                     }
-                        body { 
-                            margin: 0; 
-                            padding: 0; 
-                            background: white !important;
-                            min-height: auto;
-                        }
-                        .no-print { display: none !important; }
-                        .receipt-container { 
-                            box-shadow: none; 
-                            margin: 0;
-                            border-radius: 0;
-                            max-width: none;
-                        }
-                        .receipt-header {
-                            border-radius: 0;
-                        }
-                        .receipt-body {
-                            padding: 30px 20px;
-                        }
-                    }
+                    /* Visualização não impressa */
+                    body { margin: 0; padding: 0; background: white !important; min-height: auto; }
+                    .no-print { display: none !important; }
+                    .receipt-container { box-shadow: none; margin: 0; border-radius: 0; max-width: none; }
+                    .receipt-header { border-radius: 0; }
+                    .receipt-body { padding: 30px 20px; }
+                    /* Evitar quebras indesejadas dentro do recibo */
+                    .receipt-container, .receipt-body, .receipt-header { page-break-inside: avoid; }
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
 
                     * {
                         margin: 0;
@@ -1989,7 +2143,7 @@ printReportsTable() {
                         left: 0;
                         right: 0;
                         bottom: 0;
-                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/>'); /* URL codificada para evitar problemas de parsing */
                         opacity: 0.3;
                     }
                     
@@ -2230,9 +2384,7 @@ printReportsTable() {
                 </style>
             </head>
             <body>
-                <button class="print-button no-print" onclick="window.print()">
-                    <i class="fas fa-print"></i> Imprimir Recibo
-                </button>
+                <!-- print button removed from top; printing will be triggered via footer button -->
                 
                 <div class="receipt-container">
                     <div class="watermark">RECIBO</div>
@@ -2284,12 +2436,107 @@ printReportsTable() {
                         
                                                  <div class="receipt-footer">
                              <div class="receipt-footer-note">
-                                 <p>Este recibo foi emitido eletronicamente pelo Sistema de Controle Financeiro da Igreja</p>
-                                 <p>Usuário: ${USUARIOS[this.currentUser] || 'Sistema'} | Data de emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
-                             </div>
+                                     <p>Este recibo foi emitido eletronicamente pelo Sistema de Controle Financeiro da Igreja</p>
+                                     <p>Usuário: ${USUARIOS[this.currentUser] || 'Sistema'} | Data de emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+                                     <div style="margin-top:12px;text-align:center;">
+                                         <button id="receiptPrintBtn" class="footer-print-btn no-print" disabled>IMPRIMIR RECIBO</button>
+                                     </div>
+                                 </div>
                          </div>
                     </div>
                 </div>
+                <script>
+                    (function(){
+                        // calcula quantos pixels correspondem a 1mm no dispositivo atual
+                        function pxPerMm(){
+                            try{
+                                var el = document.createElement('div');
+                                el.style.width = '1mm';
+                                el.style.position = 'absolute';
+                                el.style.visibility = 'hidden';
+                                document.body.appendChild(el);
+                                var px = el.getBoundingClientRect().width || 0;
+                                document.body.removeChild(el);
+                                return px || (96/25.4); // fallback para 96dpi
+                            } catch(e) { return (96/25.4); }
+                        }
+
+                        function waitImagesLoaded(){
+                            var imgs = Array.from(document.images || []);
+                            if(imgs.length === 0) return Promise.resolve();
+                            return Promise.all(imgs.map(function(img){
+                                if(img.complete) return Promise.resolve();
+                                return new Promise(function(res){ img.onload = img.onerror = res; });
+                            }));
+                        }
+
+                        function waitFontsLoaded(){
+                            if(document.fonts && document.fonts.ready) return document.fonts.ready.catch(function(){/*ignore*/});
+                            return Promise.resolve();
+                        }
+
+                        function scaleToFit(){
+                            var container = document.querySelector('.receipt-container');
+                            if(!container) return;
+                            var pxmm = pxPerMm();
+                            var printableHeightMm = 297 - (2 * 10); // A4 height minus 10mm margins top/bottom
+                            var printableHeightPx = printableHeightMm * pxmm;
+                            var printableWidthMm = 210 - (2 * 10);
+                            var printableWidthPx = printableWidthMm * pxmm;
+
+                            // remove transform temporariamente para medir altura real
+                            container.style.transform = '';
+                            container.style.transformOrigin = 'top left';
+
+                            // força largura imprimível para evitar reflow horizontal
+                            container.style.width = printableWidthPx + 'px';
+                            container.style.maxWidth = printableWidthPx + 'px';
+                            container.style.boxSizing = 'border-box';
+
+                            // usar getBoundingClientRect para altura real renderizada
+                            var rect = container.getBoundingClientRect();
+                            var contentHeight = rect.height;
+
+                            // pequena tolerância para diferenças de rounding
+                            var tolerance = Math.max(4, pxmm * 1); // 1mm ou 4px
+                            if(contentHeight > (printableHeightPx - tolerance)){
+                                var scale = (printableHeightPx - tolerance) / contentHeight;
+                                // aplica escala e mantém origem no topo-esquerda
+                                container.style.transform = 'scale(' + scale + ')';
+                                container.style.transformOrigin = 'top left';
+                                // Ajusta o tamanho do body para a área imprimível para prevenir quebra de página adicional
+                                document.body.style.height = printableHeightPx + 'px';
+                                document.documentElement.style.height = printableHeightPx + 'px';
+                                // centraliza horizontalmente considerando a escala
+                                var offsetLeft = (210*pxmm - 20*pxmm - (printableWidthPx * scale)) / 2;
+                                if(!isNaN(offsetLeft)) container.style.left = (10*pxmm + Math.max(0, offsetLeft)) + 'px';
+                            } else {
+                                document.body.style.height = 'auto';
+                                document.documentElement.style.height = 'auto';
+                                container.style.left = '10mm';
+                            }
+                        }
+
+                        // espera imagens e fontes carregarem e só habilita o botão de impressão
+                        Promise.all([waitImagesLoaded(), waitFontsLoaded()]).then(function(){
+                            setTimeout(function(){
+                                var btn = document.querySelector('.footer-print-btn');
+                                if(btn) btn.disabled = false;
+                            }, 120);
+                        });
+
+                        // Registra handler não-inline para o botão de impressão do recibo
+                        try {
+                            var receiptBtn = document.getElementById('receiptPrintBtn');
+                            if (receiptBtn) {
+                                receiptBtn.addEventListener('click', function(){
+                                    try { if (window.scaleToFit) window.scaleToFit(); } catch(e) {}
+                                    setTimeout(function(){ if (window.focus) window.focus(); window.print(); }, 250);
+                                });
+                            }
+                        } catch(e) { /* ignore */ }
+                    })();
+                </script>
             </body>
             </html>
         `;

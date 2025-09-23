@@ -1,4 +1,5 @@
 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
@@ -8,27 +9,45 @@ const prisma = new PrismaClient();
 const app = express();
 app.use(cors());
 app.use(express.json());
+// Debug helper: set DEBUG=true to enable debug logs
+const DEBUG = process.env.DEBUG === 'true';
+const debug = (...args) => { if (DEBUG) console.log(...args); };
 // Servir arquivos estáticos do frontend (index.html, script.js, etc)
 app.use(express.static(__dirname));
 
 // Endpoint seguro de autenticação
 app.post('/api/auth', async (req, res) => {
   const { username, password } = req.body;
+  // Log minimalista: não registrar a senha
+  console.info(`[auth] attempt - username=${username}`);
   if (!username || !password) {
+    console.info('[auth] missing username or password');
     return res.json({ success: false, message: 'Usuário e senha obrigatórios' });
   }
-  const user = await prisma.user.findUnique({ where: { username } });
-  if (!user) {
-    return res.json({ success: false, message: 'Usuário não encontrado' });
+  try {
+    const user = await prisma.user.findUnique({ where: { username } });
+    console.info(`[auth] user lookup - username=${username} found=${!!user}`);
+    if (!user) {
+      return res.json({ success: false, message: 'Usuário não encontrado' });
+    }
+    // Comparação segura usando bcrypt
+    let valid = false;
+    try {
+      valid = await bcrypt.compare(password, user.passwordHash);
+      console.info(`[auth] password compare - username=${username} valid=${valid}`);
+    } catch (e) {
+      console.error('[auth] bcrypt compare error', e);
+    }
+    if (!valid) {
+      return res.json({ success: false, message: 'Senha incorreta' });
+    }
+    // Nunca envie o hash para o frontend
+    const { passwordHash, ...userSafe } = user;
+    res.json({ success: true, user: userSafe });
+  } catch (err) {
+    console.error('[auth] unexpected error', err);
+    res.status(500).json({ success: false, message: 'Erro interno' });
   }
-  // Comparação segura usando bcrypt
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) {
-    return res.json({ success: false, message: 'Senha incorreta' });
-  }
-  // Nunca envie o hash para o frontend
-  const { passwordHash, ...userSafe } = user;
-  res.json({ success: true, user: userSafe });
 });
 
 // Usuários
@@ -61,8 +80,6 @@ app.post('/api/caixas', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// Atualizar caixa
 app.put('/api/caixas/:key', async (req, res) => {
   try {
     const { name } = req.body;
@@ -90,9 +107,6 @@ app.delete('/api/caixas/:key', async (req, res) => {
 });
 
 // Transações
-// Buscar transação por ID
-// Buscar transação por ID
-app.get('/api/transactions/:id', async (req, res) => {
 // Atualizar transação
 app.put('/api/transactions/:id', async (req, res) => {
   try {
@@ -147,56 +161,64 @@ app.put('/api/transactions/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
-  const transaction = await prisma.transaction.findUnique({
-    where: { id },
-    include: { caixa: true, user: true, transferTo: true, receipt: true }
-  });
-  if (!transaction) return res.status(404).json({ error: 'Transação não encontrada' });
-  res.json(transaction);
+
+// Buscar transação por ID
+app.get('/api/transactions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+    const transaction = await prisma.transaction.findUnique({
+      where: { id },
+      include: { caixa: true, user: true, transferTo: true, receipt: true }
+    });
+    if (!transaction) return res.status(404).json({ error: 'Transação não encontrada' });
+    res.json(transaction);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 app.get('/api/transactions', async (req, res) => {
-  const transactions = await prisma.transaction.findMany({
-    include: { caixa: true, user: true, transferTo: true, receipt: true },
-    orderBy: { date: 'desc' }
-  });
-  res.json(transactions);
+  try {
+    const transactions = await prisma.transaction.findMany({
+      include: { caixa: true, user: true, transferTo: true, receipt: true },
+      orderBy: { date: 'desc' }
+    });
+    res.json(transactions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+// Criar transação
 app.post('/api/transactions', async (req, res) => {
   try {
     const data = req.body;
-    console.log('Recebido em /api/transactions:', data);
     // Buscar o usuário pelo username enviado
     let userId = data.userId;
     if (!userId && data.user) {
       const user = await prisma.user.findUnique({ where: { username: data.user } });
-      if (!user) {
-        console.error('Usuário não encontrado:', data.user);
-        return res.status(400).json({ error: 'Usuário não encontrado' });
-      }
+      if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
       userId = user.id;
     }
-    // Converter caixa e transferTo para IDs se vierem como string
+    // Validar tipo
+    if (!data.type || typeof data.type !== 'string') {
+      return res.status(400).json({ error: 'Tipo do recibo é obrigatório.' });
+    }
+    // Converter caixa para ID se vier como key
     let caixaId = data.caixaId;
     if (!caixaId && data.caixa) {
       const caixa = await prisma.caixa.findUnique({ where: { key: data.caixa } });
-      if (!caixa) {
-        console.error('Caixa não encontrado:', data.caixa);
-        return res.status(400).json({ error: 'Caixa não encontrado' });
-      }
+      if (!caixa) return res.status(400).json({ error: 'Caixa não encontrado' });
       caixaId = caixa.id;
     }
+    // transferTo optional
     let transferToId = data.transferToId;
     if (!transferToId && data.transferTo) {
       const caixa = await prisma.caixa.findUnique({ where: { key: data.transferTo } });
       transferToId = caixa ? caixa.id : null;
     }
-    // Converter data para Date
     const date = data.date ? new Date(data.date) : new Date();
-    // Validação dos campos obrigatórios
     if (!data.type || !caixaId || !userId || !data.amount || !date) {
-      console.error('Campos obrigatórios ausentes:', { type: data.type, caixaId, userId, amount: data.amount, date });
       return res.status(400).json({ error: 'Campos obrigatórios ausentes ou inválidos.' });
     }
     const transaction = await prisma.transaction.create({
@@ -219,6 +241,19 @@ app.post('/api/transactions', async (req, res) => {
   }
 });
 
+// Excluir transação
+app.delete('/api/transactions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+    await prisma.transaction.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao deletar transação:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Recibos
 app.get('/api/receipts', async (req, res) => {
   const receipts = await prisma.receipt.findMany({
@@ -229,7 +264,8 @@ app.get('/api/receipts', async (req, res) => {
 });
 app.post('/api/receipts', async (req, res) => {
   try {
-    const data = req.body;
+  const data = req.body;
+  debug('[receipts] incoming payload:', JSON.stringify(data));
     // Buscar o usuário pelo username enviado
     let userId = data.userId;
     if (!userId && data.user) {
@@ -242,16 +278,41 @@ app.post('/api/receipts', async (req, res) => {
     }
     // Converter data para Date
     const date = data.date ? new Date(data.date) : new Date();
-    const receipt = await prisma.receipt.create({
-      data: {
-        name: data.name,
-        type: data.type,
-        amount: data.amount,
-        date,
-        notes: data.notes,
-        userId,
+    // Se for recibo de saída, preencher o nome com o nome da igreja configurado
+    let receiptName = data.name;
+    if (data.type === 'saida') {
+      // Prioritize the test-upserted record (id=1) to make tests deterministic;
+      // otherwise fallback to the first available church record.
+      let church = null;
+      try {
+        church = await prisma.churchData.findUnique({ where: { id: 1 } });
+      } catch (e) {
+        // ignore and fallback
       }
-    });
+      if (!church) {
+        church = await prisma.churchData.findFirst();
+      }
+      debug('[receipts] fetched church data:', church ? { id: church.id, name: church.name } : null);
+      if (!church || !church.name) {
+        return res.status(400).json({ error: 'Nome da igreja não configurado. Atualize via /api/church antes de criar recibos de saída.' });
+      }
+      receiptName = church.name;
+    }
+    // Final validation: ensure name is present before calling Prisma
+    if (!receiptName || typeof receiptName !== 'string' || receiptName.trim() === '') {
+      console.error('[receipts] name missing before create. Computed name:', receiptName);
+      return res.status(400).json({ error: 'Nome do recibo é obrigatório.' });
+    }
+    const createPayload = {
+      name: receiptName,
+      type: data.type,
+      amount: data.amount,
+      date,
+      notes: data.notes || '',
+      userId,
+    };
+  debug('[receipts] about to call prisma.receipt.create with payload:', JSON.stringify(createPayload));
+    const receipt = await prisma.receipt.create({ data: createPayload });
     res.json(receipt);
   } catch (err) {
     console.error('Erro ao criar recibo:', err, req.body);
@@ -301,7 +362,11 @@ app.put('/api/church', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Backend rodando em http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Backend rodando em http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { app, prisma };
