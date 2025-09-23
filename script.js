@@ -144,7 +144,8 @@ class ChurchFinanceApp {
             this.switchScreen('mainApp');
             const currentUserDiv = document.getElementById('currentUser');
             if (currentUserDiv) {
-                currentUserDiv.textContent = USUARIOS[this.currentUser];
+                const savedUserName = localStorage.getItem('currentUserName');
+                currentUserDiv.textContent = savedUserName || USUARIOS[this.currentUser];
             }
         }
 
@@ -518,6 +519,7 @@ class ChurchFinanceApp {
             }
             this.currentUser = result.user.username;
             localStorage.setItem('currentUser', this.currentUser);
+            localStorage.setItem('currentUserName', result.user.name);
             // Atualiza o nome do usuário no dropdown
             const currentUserDiv = document.getElementById('currentUser');
             if (currentUserDiv) {
@@ -536,6 +538,7 @@ class ChurchFinanceApp {
     handleLogout() {
         this.currentUser = null;
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('currentUserName');
         // Limpa o nome do usuário do dropdown
         const currentUserDiv = document.getElementById('currentUser');
         if (currentUserDiv) {
@@ -2009,7 +2012,7 @@ printReportsTable() {
         
         // Garantir que temos o usuário atual (recuperar do localStorage se necessário)
         const currentUserKey = this.currentUser || localStorage.getItem('currentUser');
-        const currentUserName = USUARIOS[currentUserKey] || 'Sistema';
+        const currentUserName = localStorage.getItem('currentUserName') || USUARIOS[currentUserKey] || 'Sistema';
         
         console.log('Debug - currentUser:', this.currentUser, 'localStorage:', localStorage.getItem('currentUser'), 'currentUserName:', currentUserName);
 
