@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "start": "npm run migrate:deploy && node server.js",
+    "start": "npm run db:setup && node server.js",
+    "db:setup": "prisma db push --accept-data-loss",
     "migrate:deploy": "prisma migrate deploy",
     "dev": "nodemon server.js",
     "seed": "node prisma/seed.js",
