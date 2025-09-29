@@ -1,9 +1,58 @@
 // Detecta URL do backend automaticamente
-// Detecta ambiente e define a URL base da API automaticamente
-const API_BASE_URL =
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:3001'
-        : 'https://adps-finance.up.railway.app';
+// Define a URL base da API usando a origem da página quando possível.
+// Se estiver em localhost (ou abrindo via file:// durante testes locais), aponta para o servidor local.
+const API_BASE_URL = (() => {
+    try {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:3001';
+        }
+        // Se a página foi aberta via file:// (ex.: desenvolvimento local sem servidor),
+        // apontamos para o backend local para evitar chamadas ao ambiente de produção por engano.
+        if (window.location.protocol === 'file:') {
+            return 'http://localhost:3001';
+        }
+        // Em produção/servido via HTTP(S), use a mesma origem da página
+        if (window.location.origin && window.location.origin !== 'null') {
+            return window.location.origin;
+        }
+    } catch (e) {
+        // fallback conservador
+    }
+    return 'https://adps-finance.up.railway.app';
+})();
+
+// script.js carregado
+// Helpers globais mínimos usados em vários trechos do app
+function pxPerMm(){
+    try{
+        var el = document.createElement('div');
+        el.style.width = '1mm';
+        el.style.position = 'absolute';
+        el.style.visibility = 'hidden';
+        document.body.appendChild(el);
+        var px = el.getBoundingClientRect().width || 0;
+        document.body.removeChild(el);
+        return px || (96/25.4);
+    } catch(e){ return (96/25.4); }
+}
+
+function waitImagesLoaded(){
+    try{
+        var imgs = Array.from(document.images || []);
+        if(imgs.length === 0) return Promise.resolve();
+        return Promise.all(imgs.map(function(img){
+            if(img.complete) return Promise.resolve();
+            return new Promise(function(res){ img.onload = img.onerror = res; });
+        }));
+    } catch(e){ return Promise.resolve(); }
+}
+
+function waitFontsLoaded(){
+    try{
+        if(document.fonts && document.fonts.ready) return document.fonts.ready.catch(function(){/*ignore*/});
+    } catch (e) { /* ignore */ }
+    return Promise.resolve();
+}
 // Carregamento dinâmico dos caixas do backend
 let CAIXAS = {};
 async function loadCaixas() {
@@ -47,6 +96,17 @@ class ChurchFinanceApp {
             this.showNotification('Erro ao carregar recibos do servidor', 'error');
         }
     }
+    // Carregar transações do backend
+    async loadTransactions() {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/transactions`);
+            if (!res.ok) throw new Error('Error loading transactions');
+            this.transactions = await res.json();
+        } catch (err) {
+            this.transactions = [];
+            this.showNotification('Erro ao carregar transações do servidor', 'error');
+        }
+    }
     constructor() {
         this.caixas = { ...CAIXAS };
         this.currentUser = null;
@@ -84,7 +144,8 @@ class ChurchFinanceApp {
             this.switchScreen('mainApp');
             const currentUserDiv = document.getElementById('currentUser');
             if (currentUserDiv) {
-                currentUserDiv.textContent = USUARIOS[this.currentUser];
+                const savedUserName = localStorage.getItem('currentUserName');
+                currentUserDiv.textContent = savedUserName || USUARIOS[this.currentUser];
             }
         }
 
@@ -96,59 +157,83 @@ class ChurchFinanceApp {
         await this.loadReceipts();
     this.loadTheme();
         this.setupEventListeners();
+    // Monta navegação mobile dentro do dropdown do usuário (para mostrar opções no avatar)
+    this.mountMobileNavIntoDropdown();
         this.updateBalances();
         this.renderDashboard();
 
         // Dropdown do usuário: toggle ao clicar no avatar
         const userMenu = document.getElementById('userMenu');
         if (userMenu) {
+            // Toggle ao clicar no avatar; se o clique for dentro do dropdown, não impede a propagação
             userMenu.addEventListener('click', function (e) {
-                // Não fecha ao clicar dentro do dropdown
+                // Se clicou dentro do dropdown, não interferimos (permitir delegação de clicks nas nav-tab)
                 if (e.target.closest('.user-dropdown')) return;
+                // Caso contrário (clicou no avatar), alterna e impede propagação para evitar fechar imediatamente
                 userMenu.classList.toggle('open');
+                e.stopPropagation();
             });
-            // Fecha ao clicar fora
-            document.addEventListener('click', function (e) {
-                if (!userMenu.contains(e.target)) {
-                    userMenu.classList.remove('open');
-                }
+            // Fecha o dropdown se clicar fora
+            document.addEventListener('click', function () {
+                if (userMenu.classList.contains('open')) userMenu.classList.remove('open');
             });
-        }
+            // Não impedir a propagação: permitimos que a delegação de eventos capture cliques
+            // em elementos .nav-tab dentro do dropdown para navegar corretamente.
+            // (Se for necessário evitar fechamento ao clicar em áreas específicas, podemos tratar
+            // isso de forma seletiva no futuro.)
+            
+                        // expõe a função de scale pública para ser chamada pelo botão
+                        window.scaleToFit = function(){
+                            try{
+                                var safetyMm = 10; // 10mm de folga
+                                var pxmm = pxPerMm();
+                                var printableHeightMm = 297 - (2 * 10);
+                                var printableHeightPx = printableHeightMm * pxmm - (safetyMm * pxmm);
+                                var printableWidthMm = 210 - (2 * 10);
+                                var printableWidthPx = printableWidthMm * pxmm;
+                                var container = document.querySelector('.receipt-container');
+                                if(!container) return;
+                                container.style.transform = '';
+                                container.style.transformOrigin = 'top left';
+                                container.style.width = printableWidthPx + 'px';
+                                container.style.maxWidth = printableWidthPx + 'px';
+                                container.style.boxSizing = 'border-box';
+                                var rect = container.getBoundingClientRect();
+                                var contentHeight = rect.height;
+                                var tolerance = Math.max(4, pxmm * 1);
+                                var scale = 1;
+                                if(contentHeight > (printableHeightPx - tolerance)){
+                                    scale = (printableHeightPx - tolerance) / contentHeight;
+                                }
+                                scale = Math.min(1, scale);
+                                if(scale < 1){
+                                    container.style.transform = 'scale(' + scale + ')';
+                                    container.style.transformOrigin = 'top left';
+                                    document.body.style.height = (printableHeightPx + safetyMm*pxmm) + 'px';
+                                    document.documentElement.style.height = (printableHeightPx + safetyMm*pxmm) + 'px';
+                                    document.body.style.width = printableWidthPx + 'px';
+                                    document.documentElement.style.width = printableWidthPx + 'px';
+                                    container.style.top = '10mm';
+                                    container.style.left = '10mm';
+                                } else {
+                                    document.body.style.height = 'auto';
+                                    document.documentElement.style.height = 'auto';
+                                    container.style.top = '10mm';
+                                    container.style.left = '10mm';
+                                }
+                            }catch(e){/*ignore*/}
+                        };
 
-        // Navegação: menus sempre no avatar (dropdown)
-        const mobileNav = document.getElementById('mobileNavMenu');
-        const mobileNavContainer = document.getElementById('mobileNavContainer');
-        if (mobileNav && mobileNavContainer) {
-            mobileNavContainer.innerHTML = '';
-            mobileNavContainer.appendChild(mobileNav);
-        }
-        if (mobileNav) {
-            mobileNav.style.display = 'block';
-            mobileNav.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    document.querySelectorAll('.mobile-nav .nav-tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    const page = tab.getAttribute('data-page');
-                    if (page) {
-                        this.switchPage(page);
-                        userMenu.classList.remove('open');
+                        // espera imagens e fontes carregarem e só então habilita o botão
+                        Promise.all([waitImagesLoaded(), waitFontsLoaded()]).then(function(){
+                            // pequena espera para layout estabilizar
+                            setTimeout(function(){
+                                var btn = document.querySelector('.footer-print-btn');
+                                if(btn) btn.disabled = false;
+                            }, 120);
+                        });
                     }
-                });
-            });
-        }
-    }
-
-    // Carregar transações do backend
-    async loadTransactions() {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/transactions`);
-            if (!res.ok) throw new Error('Error loading transactions');
-            this.transactions = await res.json();
-        } catch (err) {
-            this.transactions = [];
-            this.showNotification('Erro ao carregar transações do servidor', 'error');
-        }
-    }
+                }
 
     // Carrega dados da igreja do backend
     async loadChurchData() {
@@ -174,6 +259,36 @@ class ChurchFinanceApp {
             this.churchLogo = null;
             this.updateLogoPreview();
             this.showNotification('Erro ao carregar dados da igreja', 'error');
+        }
+    }
+
+    // Clona as nav-tabs do menu mobile para o container dentro do dropdown do usuário
+    mountMobileNavIntoDropdown() {
+        try {
+            const container = document.getElementById('mobileNavContainer');
+            const mobileMenu = document.getElementById('mobileNavMenu');
+            if (!container || !mobileMenu) return;
+            // Limpa container
+            container.innerHTML = '';
+            // Clona cada botão (.nav-tab) e adiciona ao container
+            const tabs = Array.from(mobileMenu.querySelectorAll('.nav-tab'));
+            tabs.forEach(tab => {
+                const clone = tab.cloneNode(true);
+                // Remove display:none caso exista
+                clone.style.display = '';
+                container.appendChild(clone);
+            });
+            // Adiciona listener local para diagnosticar cliques (não substitui delegação global)
+            try {
+                container.addEventListener('click', function(ev){
+                    const nt = ev.target.closest('.nav-tab');
+                    if(nt){
+                        // diagnostic removed: mobileNavContainer click
+                    }
+                });
+            } catch(e){}
+        } catch (e) {
+            // ignore
         }
     }
 
@@ -247,6 +362,14 @@ class ChurchFinanceApp {
             tab.addEventListener('click', (e) => {
                 this.switchPage(e.target.closest('.nav-tab').dataset.page);
             });
+        });
+        // Event delegation: captura cliques em .nav-tab que possam ser inseridos dinamicamente
+        document.addEventListener('click', (e) => {
+            const navTab = e.target.closest('.nav-tab');
+            if (navTab) {
+                e.preventDefault();
+                this.switchPage(navTab.dataset.page);
+            }
         });
 
         // Modais
@@ -369,19 +492,34 @@ class ChurchFinanceApp {
         }
 
         // Envia username e senha para o backend validar
-    fetch(`${API_BASE_URL}/api/auth`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: userSelect.value, password })
-        })
-        .then(res => res.json())
-        .then(result => {
+        try {
+            // diagnostic removed: auth attempt from frontend
+        } catch (e) { /* ignore */ }
+        fetch(`${API_BASE_URL}/api/auth`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: userSelect.value, password })
+            })
+            .then(res => {
+                // diagnostic removed: auth response status
+                // Tentar parse seguro: se falhar, ler texto para diagn f3stico
+                return res.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        // resposta inválida do servidor ao autenticar
+                        return { success: false, message: 'Resposta do servidor inválida' };
+                    }
+                });
+            })
+            .then(result => {
             if (!result.success) {
                 this.showNotification(result.message || 'Usuário ou senha inválidos', 'error');
                 return;
             }
             this.currentUser = result.user.username;
             localStorage.setItem('currentUser', this.currentUser);
+            localStorage.setItem('currentUserName', result.user.name);
             // Atualiza o nome do usuário no dropdown
             const currentUserDiv = document.getElementById('currentUser');
             if (currentUserDiv) {
@@ -390,8 +528,9 @@ class ChurchFinanceApp {
             this.switchScreen('mainApp');
             this.showNotification(`Bem-vindo, ${result.user.name}!`, 'success');
         })
-        .catch(() => {
-            this.showNotification('Erro ao autenticar', 'error');
+        .catch((err) => {
+            // Falha de rede ao chamar /api/auth
+            this.showNotification('Erro ao autenticar (network)', 'error');
         });
 
     }
@@ -399,6 +538,7 @@ class ChurchFinanceApp {
     handleLogout() {
         this.currentUser = null;
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('currentUserName');
         // Limpa o nome do usuário do dropdown
         const currentUserDiv = document.getElementById('currentUser');
         if (currentUserDiv) {
@@ -417,6 +557,7 @@ class ChurchFinanceApp {
     }
 
     switchPage(pageId) {
+        // diagnostic removed: switchPage called
         // Atualizar navegação
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -446,6 +587,12 @@ class ChurchFinanceApp {
                 this.loadTransactions().then(() => {
                     this.renderReports();
                 });
+                break;
+            case 'users':
+                // Carregar usuários quando acessar a página
+                if (userManager) {
+                    userManager.loadUsers();
+                }
                 break;
             case 'settings':
                 this.renderSettings();
@@ -517,6 +664,14 @@ class ChurchFinanceApp {
     if (date) {
         date = date + 'T03:00:00.000Z';
     }
+    let transferTo = undefined;
+    if (type === 'transferencia') {
+        transferTo = formData.get('transferToCaixa');
+        if (!transferTo || transferTo === caixa) {
+            this.showNotification('Selecione um caixa destino diferente', 'error');
+            return;
+        }
+    }
     const transaction = {
         type,
         caixa,
@@ -524,7 +679,8 @@ class ChurchFinanceApp {
         person,
         amount,
         date,
-        user: this.currentUser
+        user: this.currentUser,
+        ...(transferTo ? { transferTo } : {})
     };
     if (this.editingTransactionId) {
         // Edição
@@ -1174,15 +1330,10 @@ class ChurchFinanceApp {
 
         if (caixaFilter && caixaFilter !== 'todos') {
             filteredTransactions = filteredTransactions.filter(t => {
-                // Considera transações do caixa selecionado (origem ou destino), tratando diferentes formatos
                 if (t.caixa && typeof t.caixa === 'object') {
-                    return t.caixa.key === caixaFilter || t.caixa.id === caixaFilter || t.caixa.name === caixaFilter;
-                } else if (t.caixa) {
-                    return t.caixa === caixaFilter;
-                } else if (t.caixaId) {
-                    return t.caixaId === caixaFilter;
+                    return t.caixa.key === caixaFilter;
                 }
-                return false;
+                return t.caixa === caixaFilter;
             });
         }
         // Permitir também o valor vazio como "todos"
@@ -1210,6 +1361,7 @@ class ChurchFinanceApp {
             '<th>Ofertante</th>' +
             '<th>Descrição</th>' +
             '<th>Valor</th>' +
+            '<th>Transferência Para</th>' +
             '</tr></thead><tbody>';
         for (var i = 0; i < transactions.length; i++) {
             var t = transactions[i];
@@ -1219,6 +1371,14 @@ class ChurchFinanceApp {
             } else {
                 caixaNome = CAIXAS[t.caixa] || '';
             }
+            var transferNome = '';
+            if (t.type === 'transferencia' && t.transferTo) {
+                if (typeof t.transferTo === 'object') {
+                    transferNome = t.transferTo.name || CAIXAS[t.transferTo.key] || CAIXAS[t.transferTo.id] || '';
+                } else {
+                    transferNome = CAIXAS[t.transferTo] || '';
+                }
+            }
             tableHtml += '<tr>';
             tableHtml += '<td>' + this.formatDate(t.date) + '</td>';
             tableHtml += '<td>' + (t.type.charAt(0).toUpperCase() + t.type.slice(1)) + '</td>';
@@ -1226,6 +1386,7 @@ class ChurchFinanceApp {
             tableHtml += '<td>' + (t.person || '-') + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
             tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
+            tableHtml += '<td>' + (transferNome || '-') + '</td>';
             tableHtml += '</tr>';
         }
         tableHtml += '</tbody></table></div>';
@@ -1260,17 +1421,71 @@ printReportsTable() {
                     tr:nth-child(odd) { background: #fff; }
                     h2 { margin-bottom: 0; }
                     table, th, td { table-layout: auto; }
+                    .popup-print-btn { padding: 8px 14px; background: #14532d; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+                    .popup-print-btn[disabled] { opacity: 0.5; cursor: default; }
                 </style>
+                <script>
+                    // Auto-scale helper for popup; no auto-printing — user clicks the print button
+                    function waitForImagesLoad(doc, callback) {
+                        const imgs = Array.from(doc.images || []);
+                        if (imgs.length === 0) return callback();
+                        let loaded = 0;
+                        imgs.forEach(img => {
+                            if (img.complete) {
+                                loaded++;
+                                if (loaded === imgs.length) callback();
+                            } else {
+                                img.addEventListener('load', () => { loaded++; if (loaded === imgs.length) callback(); });
+                                img.addEventListener('error', () => { loaded++; if (loaded === imgs.length) callback(); });
+                            }
+                        });
+                    }
+                    window.addEventListener('DOMContentLoaded', () => {
+                        try {
+                            waitForImagesLoad(document, () => {
+                                // compute printable height (A4 height - margins)
+                                const dpi = 96; // fallback
+                                const mmToPx = mm => Math.round(mm * dpi / 25.4);
+                                const printableHeightPx = mmToPx(297 - 20);
+                                const container = document.querySelector('.receipt-container');
+                                if (container) {
+                                    const contentHeight = container.scrollHeight;
+                                    if (contentHeight > printableHeightPx) {
+                                        const scale = printableHeightPx / contentHeight;
+                                        container.style.transform = 'scale(' + scale + ')';
+                                        container.style.transformOrigin = 'top left';
+                                        document.body.style.width = Math.round(210 * scale) + 'mm';
+                                    }
+                                }
+                                // habilita o botão de impressão da popup
+                                var btn = document.getElementById('popupPrintBtn');
+                                if (btn) btn.disabled = false;
+                            });
+                        } catch (e) { try{ var btn = document.getElementById('popupPrintBtn'); if(btn) btn.disabled = false; }catch(e){} }
+                    });
+                </script>
             </head>
             <body>
                 ${headerHtml}
+                <div style="text-align:right;margin:12px 0;">
+                    <button id="popupPrintBtn" class="popup-print-btn" disabled>IMPRIMIR RELATÓRIO</button>
+                </div>
                 ${container.innerHTML}
+                <script>
+                    (function(){
+                        var btn = document.getElementById('popupPrintBtn');
+                        if(!btn) return;
+                        btn.addEventListener('click', function(){
+                            if(window.focus) window.focus();
+                            window.print();
+                        });
+                    })();
+                </script>
             </body>
             </html>
         `);
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => printWindow.print(), 300);
     }
     renderReportsChart(transactions) {
         const container = document.getElementById('reportsChart');
@@ -1634,60 +1849,41 @@ printReportsTable() {
     const brt = new Date(utc - (3 * 60 * 60000));
     return brt.toLocaleDateString('pt-BR');
     }
+
     showNotification(message, type = 'info') {
-        // Use a single bottom-centered container for toasts so they never overlap
-        // the user avatar. The container has pointer-events:none so it doesn't
-        // block clicks; individual toasts are pointer-events:auto so they can
-        // be interactive if needed.
-        let container = document.getElementById('appToastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'appToastContainer';
-            container.className = 'app-toast-container';
-            // Always append to document.body to avoid being inside any positioned ancestor
-            // that could create a stacking context and cause toasts to appear above the avatar.
-            document.body.appendChild(container);
-        } else {
-            // If container exists but for some reason is not a direct child of body, re-append it.
-            if (container.parentNode !== document.body) document.body.appendChild(container);
-        }
+        // Criar notificação simples
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 300px;
+        `;
 
-        // Force an explicit low z-index inline to avoid CSS cascade issues / caching.
-        // The header/avatar will have a higher z-index so the toast stays visually behind it.
-        try {
-            container.style.position = 'fixed';
-            container.style.zIndex = '50';
-            container.style.right = '24px';
-            container.style.bottom = '24px';
-            // ensure alignment to right
-            container.style.left = 'auto';
-            container.style.transform = 'none';
-        } catch (e) {
-            // ignore style assignment errors in exotic environments
-        }
+        const colors = {
+            success: '#22c55e',
+            error: '#ef4444',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
 
-        const toast = document.createElement('div');
-        toast.className = `app-toast ${type || 'info'}`;
-        toast.textContent = message;
+        notification.style.background = colors[type] || colors.info;
+        notification.textContent = message;
 
-        container.appendChild(toast);
+        document.body.appendChild(notification);
 
-        // Trigger show animation
-        requestAnimationFrame(() => {
-            toast.classList.add('visible');
-        });
-
-        // Auto-hide
         setTimeout(() => {
-            toast.classList.remove('visible');
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
             setTimeout(() => {
-                if (toast.parentNode) toast.parentNode.removeChild(toast);
-                // remove container when empty
-                if (container && container.children.length === 0 && container.parentNode) {
-                    container.parentNode.removeChild(container);
-                }
-            }, 350);
-        }, 3500);
+                document.body.removeChild(notification);
+            }, 300);
+        }, 3000);
     }
 
     // Configurações
@@ -1810,12 +2006,9 @@ printReportsTable() {
         
         printWindow.document.write(printContent);
         printWindow.document.close();
-        
-        // Aguardar o carregamento das imagens antes de imprimir
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 1000);
+        // Do not invoke print from the opener; the generated HTML includes a script
+        // that scales the content to the printable A4 area and calls window.print()
+        // after images have loaded. This avoids double-printing and ensures correct scaling.
     }
 
     generateReceiptHTML(receipt) {
@@ -1824,6 +2017,12 @@ printReportsTable() {
         const churchPhone = this.churchData.phone || '';
         const churchEmail = this.churchData.email || '';
         const churchCnpj = this.churchData.cnpj || '';
+        
+        // Garantir que temos o usuário atual (recuperar do localStorage se necessário)
+        const currentUserKey = this.currentUser || localStorage.getItem('currentUser');
+        const currentUserName = localStorage.getItem('currentUserName') || USUARIOS[currentUserKey] || 'Sistema';
+        
+        console.log('Debug - currentUser:', this.currentUser, 'localStorage:', localStorage.getItem('currentUser'), 'currentUserName:', currentUserName);
 
         // Cores padrão (entrada)
         let gradMain = 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)';
@@ -1857,99 +2056,65 @@ printReportsTable() {
                 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-                    /* Ajuste para impressão em A4 */
+                    /* Forçar A4 retrato na impressão e ajustar o conteúdo à área imprimível */
+                    @page { size: A4 portrait; margin: 10mm; }
                     @media print {
                         html, body {
                             width: 210mm;
                             height: 297mm;
-                            max-width: 210mm;
-                            max-height: 297mm;
-                            margin: 0 auto !important;
-                            padding: 0 !important;
-                            overflow: hidden;
+                            margin: 0;
+                            padding: 0;
+                            background: white !important;
+                            -webkit-print-color-adjust: exact;
+                            overflow: hidden; /* importante para evitar criação de páginas extras */
                         }
+                        /* Posiciona o container exatamente dentro da área imprimível
+                           (margens definidas em @page: 10mm) e limita sua altura para
+                           evitar quebra automática em múltiplas páginas */
                         .receipt-container {
-                            width: 190mm !important;
-                            max-width: 190mm !important;
-                            min-width: 0 !important;
-                            margin: 0 auto !important;
+                            position: absolute !important;
+                            top: 10mm !important;
+                            left: 10mm !important;
+                            right: 10mm !important;
+                            height: calc(297mm - 20mm) !important; /* área imprimível vertical */
+                            width: calc(210mm - 20mm) !important; /* área imprimível horizontal */
+                            max-width: calc(210mm - 20mm) !important;
+                            margin: 0 !important;
                             box-shadow: none !important;
                             border-radius: 0 !important;
                             page-break-inside: avoid;
+                            overflow: hidden !important; /* esconde conteúdo que exceder após qualquer rounding */
+                            transform-origin: top left;
                         }
-                        .receipt-header {
-                            padding: 24px 16px 18px !important;
-                        }
-                        .receipt-body {
-                            padding: 18px 12px !important;
-                        }
-                        .receipt-title {
-                            font-size: 22px !important;
-                            margin-bottom: 18px !important;
-                        }
-                        .receipt-content {
-                            font-size: 13px !important;
-                            margin: 16px 0 !important;
-                        }
-                        .receipt-amount-container {
-                            margin: 18px 0 !important;
-                            padding: 14px !important;
-                            border-radius: 10px !important;
-                        }
-                        .receipt-amount {
-                            font-size: 22px !important;
-                        }
-                        .receipt-details {
-                            margin: 14px 0 !important;
-                            padding: 10px !important;
-                            border-radius: 8px !important;
-                        }
-                        .receipt-detail {
-                            margin: 6px 0 !important;
-                            padding: 6px 0 !important;
-                        }
-                        .receipt-footer {
-                            margin-top: 18px !important;
-                            padding-top: 10px !important;
-                        }
-                        .receipt-footer-note {
-                            padding: 8px !important;
-                            margin-top: 8px !important;
-                        }
-                        .church-logo {
-                            max-width: 60px !important;
-                            max-height: 60px !important;
-                            margin-bottom: 10px !important;
-                            padding: 4px !important;
-                        }
-                        .watermark {
-                            font-size: 48px !important;
-                        }
-                        .receipt-number, .receipt-date {
-                            font-size: 10px !important;
-                            padding: 4px 8px !important;
-                        }
+                        /* Escala automática: se o conteúdo exceder a altura, o navegador deve ajustar conforme settings da impressora.
+                           Aqui garantimos tipografia e espaçamentos adequados para A4 */
+                        .receipt-header { padding: 24px 16px 18px !important; }
+                        .receipt-body { padding: 18px 12px !important; }
+                        .receipt-title { font-size: 22px !important; margin-bottom: 18px !important; }
+                        .receipt-content { font-size: 13px !important; margin: 16px 0 !important; }
+                        .receipt-amount-container { margin: 18px 0 !important; padding: 14px !important; border-radius: 10px !important; }
+                        .receipt-amount { font-size: 22px !important; }
+                        .receipt-details { margin: 14px 0 !important; padding: 10px !important; border-radius: 8px !important; }
+                        .receipt-detail { margin: 6px 0 !important; padding: 6px 0 !important; }
+                        .receipt-footer { margin-top: 8px !important; padding-top: 8px !important; }
+                        .receipt-footer-note { padding: 8px !important; margin-top: 8px !important; }
+                        .church-logo { max-width: 60px !important; max-height: 60px !important; margin-bottom: 10px !important; padding: 4px !important; }
+                        .watermark { font-size: 48px !important; }
+                        .receipt-number, .receipt-date { font-size: 10px !important; padding: 4px 8px !important; }
+                        img { max-width: 100% !important; height: auto !important; }
+                        .footer-print-btn { padding: 10px 18px; background: #1f9d55; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+                        .footer-print-btn[disabled] { opacity: 0.5; cursor: default; }
+                        /* Esconder botão apenas na impressão real */
+                        .footer-print-btn { display: none !important; }
                     }
-                        body { 
-                            margin: 0; 
-                            padding: 0; 
-                            background: white !important;
-                            min-height: auto;
-                        }
-                        .no-print { display: none !important; }
-                        .receipt-container { 
-                            box-shadow: none; 
-                            margin: 0;
-                            border-radius: 0;
-                            max-width: none;
-                        }
-                        .receipt-header {
-                            border-radius: 0;
-                        }
-                        .receipt-body {
-                            padding: 30px 20px;
-                        }
-                    }
+                    /* Visualização não impressa */
+                    body { margin: 0; padding: 0; background: white !important; min-height: auto; }
+                    .receipt-container { box-shadow: none; margin: 0; border-radius: 0; max-width: none; }
+                    .receipt-header { border-radius: 0; }
+                    .receipt-body { padding: 30px 20px; }
+                    /* Evitar quebras indesejadas dentro do recibo */
+                    .receipt-container, .receipt-body, .receipt-header { page-break-inside: avoid; }
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
 
                     * {
                         margin: 0;
@@ -1996,7 +2161,7 @@ printReportsTable() {
                         left: 0;
                         right: 0;
                         bottom: 0;
-                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/>'); /* URL codificada para evitar problemas de parsing */
                         opacity: 0.3;
                     }
                     
@@ -2237,9 +2402,7 @@ printReportsTable() {
                 </style>
             </head>
             <body>
-                <button class="print-button no-print" onclick="window.print()">
-                    <i class="fas fa-print"></i> Imprimir Recibo
-                </button>
+                <!-- print button removed from top; printing will be triggered via footer button -->
                 
                 <div class="receipt-container">
                     <div class="watermark">RECIBO</div>
@@ -2291,15 +2454,381 @@ printReportsTable() {
                         
                                                  <div class="receipt-footer">
                              <div class="receipt-footer-note">
-                                 <p>Este recibo foi emitido eletronicamente pelo Sistema de Controle Financeiro da Igreja</p>
-                                 <p>Usuário: ${USUARIOS[this.currentUser] || 'Sistema'} | Data de emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
-                             </div>
+                                     <p>Este recibo foi emitido eletronicamente pelo Sistema de Controle Financeiro da Igreja</p>
+                                     <p>Usuário: ${currentUserName} | Data de emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+                                     <div style="margin-top:12px;text-align:center;">
+                                         <button id="receiptPrintBtn" class="footer-print-btn" disabled>IMPRIMIR RECIBO</button>
+                                     </div>
+                                 </div>
                          </div>
                     </div>
                 </div>
+                <script>
+                    (function(){
+                        // calcula quantos pixels correspondem a 1mm no dispositivo atual
+                        function pxPerMm(){
+                            try{
+                                var el = document.createElement('div');
+                                el.style.width = '1mm';
+                                el.style.position = 'absolute';
+                                el.style.visibility = 'hidden';
+                                document.body.appendChild(el);
+                                var px = el.getBoundingClientRect().width || 0;
+                                document.body.removeChild(el);
+                                return px || (96/25.4); // fallback para 96dpi
+                            } catch(e) { return (96/25.4); }
+                        }
+
+                        function waitImagesLoaded(){
+                            var imgs = Array.from(document.images || []);
+                            if(imgs.length === 0) return Promise.resolve();
+                            return Promise.all(imgs.map(function(img){
+                                if(img.complete) return Promise.resolve();
+                                return new Promise(function(res){ img.onload = img.onerror = res; });
+                            }));
+                        }
+
+                        function waitFontsLoaded(){
+                            if(document.fonts && document.fonts.ready) return document.fonts.ready.catch(function(){/*ignore*/});
+                            return Promise.resolve();
+                        }
+
+                        function scaleToFit(){
+                            var container = document.querySelector('.receipt-container');
+                            if(!container) return;
+                            var pxmm = pxPerMm();
+                            var printableHeightMm = 297 - (2 * 10); // A4 height minus 10mm margins top/bottom
+                            var printableHeightPx = printableHeightMm * pxmm;
+                            var printableWidthMm = 210 - (2 * 10);
+                            var printableWidthPx = printableWidthMm * pxmm;
+
+                            // remove transform temporariamente para medir altura real
+                            container.style.transform = '';
+                            container.style.transformOrigin = 'top left';
+
+                            // força largura imprimível para evitar reflow horizontal
+                            container.style.width = printableWidthPx + 'px';
+                            container.style.maxWidth = printableWidthPx + 'px';
+                            container.style.boxSizing = 'border-box';
+
+                            // usar getBoundingClientRect para altura real renderizada
+                            var rect = container.getBoundingClientRect();
+                            var contentHeight = rect.height;
+
+                            // pequena tolerância para diferenças de rounding
+                            var tolerance = Math.max(4, pxmm * 1); // 1mm ou 4px
+                            if(contentHeight > (printableHeightPx - tolerance)){
+                                var scale = (printableHeightPx - tolerance) / contentHeight;
+                                // aplica escala e mantém origem no topo-esquerda
+                                container.style.transform = 'scale(' + scale + ')';
+                                container.style.transformOrigin = 'top left';
+                                // Ajusta o tamanho do body para a área imprimível para prevenir quebra de página adicional
+                                document.body.style.height = printableHeightPx + 'px';
+                                document.documentElement.style.height = printableHeightPx + 'px';
+                                // centraliza horizontalmente considerando a escala
+                                var offsetLeft = (210*pxmm - 20*pxmm - (printableWidthPx * scale)) / 2;
+                                if(!isNaN(offsetLeft)) container.style.left = (10*pxmm + Math.max(0, offsetLeft)) + 'px';
+                            } else {
+                                document.body.style.height = 'auto';
+                                document.documentElement.style.height = 'auto';
+                                container.style.left = '10mm';
+                            }
+                        }
+
+                        // espera imagens e fontes carregarem e só habilita o botão de impressão
+                        Promise.all([waitImagesLoaded(), waitFontsLoaded()]).then(function(){
+                            setTimeout(function(){
+                                var btn = document.querySelector('.footer-print-btn');
+                                if(btn) btn.disabled = false;
+                            }, 120);
+                        });
+
+                        // Registra handler não-inline para o botão de impressão do recibo
+                        try {
+                            var receiptBtn = document.getElementById('receiptPrintBtn');
+                            if (receiptBtn) {
+                                receiptBtn.addEventListener('click', function(){
+                                    try { if (window.scaleToFit) window.scaleToFit(); } catch(e) {}
+                                    setTimeout(function(){ if (window.focus) window.focus(); window.print(); }, 250);
+                                });
+                            }
+                        } catch(e) { /* ignore */ }
+                    })();
+                </script>
             </body>
             </html>
         `;
     }
 }
+
+// ============ GERENCIAMENTO DE USUÁRIOS ============
+
+class UserManager {
+    constructor() {
+        this.currentEditingUser = null;
+        this.initEventListeners();
+    }
+
+    initEventListeners() {
+        // Botões da seção de usuários
+        document.getElementById('newUserBtn')?.addEventListener('click', () => this.openNewUserModal());
+        document.getElementById('refreshUsersBtn')?.addEventListener('click', () => this.loadUsers());
+        
+        // Modal de usuário
+        document.getElementById('cancelUser')?.addEventListener('click', () => this.closeUserModal());
+        document.getElementById('userForm')?.addEventListener('submit', (e) => this.handleUserSubmit(e));
+        
+        // Fechar modal ao clicar no X
+        document.querySelector('#userModal .modal-close')?.addEventListener('click', () => this.closeUserModal());
+        
+        // Fechar modal ao clicar fora
+        document.getElementById('userModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'userModal') this.closeUserModal();
+        });
+    }
+
+    async loadUsers() {
+        try {
+            const tableBody = document.getElementById('usersTableBody');
+            if (!tableBody) return;
+
+            // Mostrar loading
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="users-loading">
+                        <i class="fas fa-spinner fa-spin"></i> Carregando usuários...
+                    </td>
+                </tr>
+            `;
+
+            const response = await fetch(`${API_BASE_URL}/api/users`);
+            
+            if (!response.ok) {
+                throw new Error(`Erro ${response.status}: ${response.statusText}`);
+            }
+
+            const users = await response.json();
+
+            if (users.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="users-empty">
+                            <i class="fas fa-users"></i><br>
+                            Nenhum usuário encontrado
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Renderizar usuários
+            tableBody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.name}</td>
+                    <td><span class="role-badge ${user.role}">${this.getRoleLabel(user.role)}</span></td>
+                    <td>
+                        <div class="user-actions">
+                            <button class="btn btn-edit" onclick="userManager.editUser(${user.id})" title="Editar usuário">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn btn-delete" onclick="userManager.deleteUser(${user.id}, '${user.username}')" title="Excluir usuário">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+        } catch (error) {
+            console.error('Erro ao carregar usuários:', error);
+            document.getElementById('usersTableBody').innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #dc2626; padding: 20px;">
+                        <i class="fas fa-exclamation-triangle"></i> Erro ao carregar usuários: ${error.message}
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    getRoleLabel(role) {
+        const labels = {
+            'admin': 'Administrador',
+            'tesoureiro': 'Tesoureiro',
+            'secretario': 'Secretário'
+        };
+        return labels[role] || role;
+    }
+
+    openNewUserModal() {
+        this.currentEditingUser = null;
+        document.getElementById('userModalTitle').textContent = 'Novo Usuário';
+        document.getElementById('saveUserBtn').textContent = 'Salvar';
+        document.getElementById('passwordHint').classList.add('hidden');
+        document.getElementById('userPassword').required = true;
+        
+        // Limpar formulário
+        const form = document.getElementById('userForm');
+        form.reset();
+        
+        // Mostrar modal
+        document.getElementById('userModal').style.display = 'flex';
+    }
+
+    async editUser(userId) {
+        try {
+            // Buscar dados do usuário
+            const response = await fetch(`${API_BASE_URL}/api/users`);
+            const users = await response.json();
+            const user = users.find(u => u.id === userId);
+            
+            if (!user) {
+                alert('Usuário não encontrado');
+                return;
+            }
+
+            this.currentEditingUser = user;
+            document.getElementById('userModalTitle').textContent = 'Editar Usuário';
+            document.getElementById('saveUserBtn').textContent = 'Atualizar';
+            document.getElementById('passwordHint').classList.remove('hidden');
+            document.getElementById('userPassword').required = false;
+
+            // Preencher formulário
+            document.getElementById('userUsername').value = user.username;
+            document.getElementById('userName').value = user.name;
+            document.getElementById('userPassword').value = '';
+            document.getElementById('userRole').value = user.role;
+
+            // Mostrar modal
+            document.getElementById('userModal').style.display = 'flex';
+
+        } catch (error) {
+            console.error('Erro ao carregar dados do usuário:', error);
+            alert('Erro ao carregar dados do usuário: ' + error.message);
+        }
+    }
+
+    async deleteUser(userId, username) {
+        if (!confirm(`Tem certeza que deseja excluir o usuário "${username}"?\n\nEsta ação não pode ser desfeita.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `Erro ${response.status}`);
+            }
+
+            alert('Usuário excluído com sucesso!');
+            this.loadUsers(); // Recarregar lista
+
+        } catch (error) {
+            console.error('Erro ao excluir usuário:', error);
+            alert('Erro ao excluir usuário: ' + error.message);
+        }
+    }
+
+    async handleUserSubmit(e) {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const userData = {
+            username: formData.get('username'),
+            name: formData.get('name'),
+            password: formData.get('password'),
+            role: formData.get('role')
+        };
+
+        // Validações frontend
+        if (!userData.username || userData.username.length < 3) {
+            alert('Username deve ter pelo menos 3 caracteres');
+            return;
+        }
+
+        if (!userData.name) {
+            alert('Nome é obrigatório');
+            return;
+        }
+
+        if (!userData.role) {
+            alert('Role é obrigatório');
+            return;
+        }
+
+        if (!this.currentEditingUser && (!userData.password || userData.password.length < 6)) {
+            alert('Senha deve ter pelo menos 6 caracteres');
+            return;
+        }
+
+        if (this.currentEditingUser && userData.password && userData.password.length < 6) {
+            alert('Se informada, a senha deve ter pelo menos 6 caracteres');
+            return;
+        }
+
+        try {
+            let response;
+            
+            if (this.currentEditingUser) {
+                // Editar usuário existente
+                const updateData = { ...userData };
+                if (!updateData.password) {
+                    delete updateData.password; // Não enviar senha vazia
+                }
+                
+                response = await fetch(`${API_BASE_URL}/api/users/${this.currentEditingUser.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+            } else {
+                // Criar novo usuário
+                response = await fetch(`${API_BASE_URL}/api/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+            }
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `Erro ${response.status}`);
+            }
+
+            const action = this.currentEditingUser ? 'atualizado' : 'criado';
+            alert(`Usuário ${action} com sucesso!`);
+            
+            this.closeUserModal();
+            this.loadUsers(); // Recarregar lista
+
+        } catch (error) {
+            console.error('Erro ao salvar usuário:', error);
+            alert('Erro ao salvar usuário: ' + error.message);
+        }
+    }
+
+    closeUserModal() {
+        document.getElementById('userModal').style.display = 'none';
+        this.currentEditingUser = null;
+    }
+}
+
+// Instância global do gerenciador de usuários
+let userManager;
+
+// Inicializar quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    userManager = new UserManager();
+});
 
