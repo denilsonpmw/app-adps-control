@@ -151,7 +151,7 @@ app.put('/api/transactions/:id', async (req, res) => {
         transferToId,
         userId,
       },
-      include: { caixa: true, user: true, transferTo: true, receipt: true }
+      include: { caixa: true, user: true, receipt: true }
     });
     res.json(updated);
   } catch (err) {
@@ -162,14 +162,14 @@ app.put('/api/transactions/:id', async (req, res) => {
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
   const transaction = await prisma.transaction.findUnique({
     where: { id },
-    include: { caixa: true, user: true, transferTo: true, receipt: true }
+    include: { caixa: true, user: true, receipt: true }
   });
   if (!transaction) return res.status(404).json({ error: 'Transação não encontrada' });
   res.json(transaction);
 });
 app.get('/api/transactions', async (req, res) => {
   const transactions = await prisma.transaction.findMany({
-    include: { caixa: true, user: true, transferTo: true, receipt: true },
+    include: { caixa: true, user: true, receipt: true },
     orderBy: { date: 'desc' }
   });
   res.json(transactions);
