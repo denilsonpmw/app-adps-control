@@ -1,21 +1,24 @@
 # Configuração do Railway
 
-## Passos para configurar o banco PostgreSQL no Railway:
+## ⚠️ **IMPORTANTE: Configuração do Banco de Dados**
 
-1. **No painel do Railway**, vá em "Variables" e configure:
+### No painel do Railway, configure a variável:
+```
+DATABASE_URL=postgresql://postgres:oAkxAqEQrrOfUmBXDsAmLyZqPbwUommG@postgres.railway.internal:5432/railway
+```
+
+## Passos para configurar:
+
+1. **No painel do Railway**, vá em "Variables" e adicione:
+   - **Nome**: `DATABASE_URL`
+   - **Valor**: `postgresql://postgres:oAkxAqEQrrOfUmBXDsAmLyZqPbwUommG@postgres.railway.internal:5432/railway`
+
+2. **Após configurar**, faça redeploy ou aguarde o próximo deploy
+
+3. **Verificação**: Nos logs deve aparecer:
    ```
-   DATABASE_URL=postgresql://postgres:SENHA@SERVIDOR:5432/railway?sslmode=require
-   ```
-   (Substitua pela URL real do seu banco PostgreSQL do Railway)
-
-2. **Após configurar a DATABASE_URL**, o Railway executará automaticamente:
-   - `npm install`
-   - `prisma generate` (via postinstall)
-   - `prisma migrate deploy` (se necessário)
-
-3. **Para popular o banco**, execute via Railway CLI ou adicione ao deploy:
-   ```bash
-   npx prisma db seed
+   📍 DATABASE_URL: Configurada
+   👥 Usuários no banco: X
    ```
 
 ## Desenvolvimento Local:
@@ -23,13 +26,13 @@
 Para desenvolvimento local, use SQLite (já configurado no .env):
 ```bash
 npm install
-npx prisma migrate dev --name init
+npx prisma db push
 npx prisma db seed
 node server.js
 ```
 
 ## Troubleshooting:
 
-- Se der erro de schema, delete `prisma/migrations` e rode `npx prisma migrate dev --name init`
-- Se der erro de conexão, verifique se a DATABASE_URL está correta no Railway
-- Para resetar banco: `npx prisma migrate reset` (CUIDADO: apaga todos os dados!)
+- **Se não persistir dados**: Verifique se `DATABASE_URL` está configurada no Railway
+- **Se der erro de conexão**: Aguarde alguns minutos após configurar a variável
+- **Se der erro de schema**: Delete dados do banco e deixe o seed recriar
