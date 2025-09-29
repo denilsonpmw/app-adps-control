@@ -1855,7 +1855,7 @@ printReportsTable() {
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed;
-            top: 20px;
+            bottom: 20px;
             right: 20px;
             padding: 15px 20px;
             border-radius: 8px;
