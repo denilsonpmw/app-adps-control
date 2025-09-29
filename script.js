@@ -1263,7 +1263,6 @@ class ChurchFinanceApp {
             '<th>Ofertante</th>' +
             '<th>Descrição</th>' +
             '<th>Valor</th>' +
-            '<th>Transferência Para</th>' +
             '</tr></thead><tbody>';
         for (var i = 0; i < transactions.length; i++) {
             var t = transactions[i];
@@ -1273,14 +1272,6 @@ class ChurchFinanceApp {
             } else {
                 caixaNome = CAIXAS[t.caixa] || '';
             }
-            var transferNome = '';
-            if (t.type === 'transferencia' && t.transferTo) {
-                if (typeof t.transferTo === 'object') {
-                    transferNome = t.transferTo.name || CAIXAS[t.transferTo.key] || CAIXAS[t.transferTo.id] || '';
-                } else {
-                    transferNome = CAIXAS[t.transferTo] || '';
-                }
-            }
             tableHtml += '<tr>';
             tableHtml += '<td>' + this.formatDate(t.date) + '</td>';
             tableHtml += '<td>' + (t.type.charAt(0).toUpperCase() + t.type.slice(1)) + '</td>';
@@ -1288,7 +1279,6 @@ class ChurchFinanceApp {
             tableHtml += '<td>' + (t.person || '-') + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
             tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
-            tableHtml += '<td>' + (transferNome || '-') + '</td>';
             tableHtml += '</tr>';
         }
         tableHtml += '</tbody></table></div>';
@@ -1801,6 +1791,7 @@ printReportsTable() {
                 // Se não for JSON, mostra erro genérico
                 if (!contentType.includes('application/json')) {
                     throw new Error('Erro interno no servidor. Tente novamente ou contate o suporte.');
+
                 }
                 const data = await res.json();
                 throw new Error(data.error || 'Erro ao salvar dados da igreja');
