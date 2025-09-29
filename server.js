@@ -340,8 +340,19 @@ async function startServer() {
     console.log('✅ Conexão com banco estabelecida');
     
     // Testa se o banco está funcionando
-    const userCount = await prisma.user.count();
-    console.log(`👥 Usuários no banco: ${userCount}`);
+    try {
+      const userCount = await prisma.user.count();
+      console.log(`👥 Usuários no banco: ${userCount}`);
+      
+      // Se não há usuários, executa o seed
+      if (userCount === 0) {
+        console.log('🌱 Banco vazio, executando seed...');
+        const { execSync } = require('child_process');
+        execSync('npm run seed', { stdio: 'inherit' });
+      }
+    } catch (seedError) {
+      console.log('⚠️ Erro ao verificar/popular banco:', seedError.message);
+    }
     
     app.listen(PORT, () => {
       console.log(`🌐 Backend rodando em http://localhost:${PORT}`);

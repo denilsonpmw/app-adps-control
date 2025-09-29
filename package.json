@@ -1,9 +1,10 @@
 {
   "scripts": {
-    "start": "node server.js",
+    "start": "npm run migrate:deploy && node server.js",
+    "migrate:deploy": "prisma migrate deploy",
     "dev": "nodemon server.js",
     "seed": "node prisma/seed.js",
-    "postinstall": "prisma generate && prisma migrate deploy"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.14.0",
