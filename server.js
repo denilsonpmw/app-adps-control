@@ -151,7 +151,7 @@ app.put('/api/transactions/:id', async (req, res) => {
         transferToId,
         userId,
       },
-      include: { caixa: true, user: true, receipt: true }
+      include: { caixa: true, user: true, transferTo: true, receipt: true }
     });
     res.json(updated);
   } catch (err) {
@@ -162,14 +162,14 @@ app.put('/api/transactions/:id', async (req, res) => {
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
   const transaction = await prisma.transaction.findUnique({
     where: { id },
-    include: { caixa: true, user: true, receipt: true }
+    include: { caixa: true, user: true, transferTo: true, receipt: true }
   });
   if (!transaction) return res.status(404).json({ error: 'Transação não encontrada' });
   res.json(transaction);
 });
 app.get('/api/transactions', async (req, res) => {
   const transactions = await prisma.transaction.findMany({
-    include: { caixa: true, user: true, receipt: true },
+    include: { caixa: true, user: true, transferTo: true, receipt: true },
     orderBy: { date: 'desc' }
   });
   res.json(transactions);
@@ -188,7 +188,7 @@ app.post('/api/transactions', async (req, res) => {
       }
       userId = user.id;
     }
-    // Converter caixa para ID se vier como string
+    // Converter caixa e transferTo para IDs se vierem como string
     let caixaId = data.caixaId;
     if (!caixaId && data.caixa) {
       const caixa = await prisma.caixa.findUnique({ where: { key: data.caixa } });
@@ -197,6 +197,11 @@ app.post('/api/transactions', async (req, res) => {
         return res.status(400).json({ error: 'Caixa não encontrado' });
       }
       caixaId = caixa.id;
+    }
+    let transferToId = data.transferToId;
+    if (!transferToId && data.transferTo) {
+      const caixa = await prisma.caixa.findUnique({ where: { key: data.transferTo } });
+      transferToId = caixa ? caixa.id : null;
     }
     // Converter data para Date
     const date = data.date ? new Date(data.date) : new Date();
@@ -209,8 +214,6 @@ app.post('/api/transactions', async (req, res) => {
     if (data.type !== 'entrada' && data.type !== 'saida') {
       return res.status(400).json({ error: 'Tipo de transação inválido. Use apenas "entrada" ou "saida".' });
     }
-    // Cria a transação no banco
-    console.log('💾 Criando transação no banco...');
     const transaction = await prisma.transaction.create({
       data: {
         type: data.type,
@@ -223,23 +226,6 @@ app.post('/api/transactions', async (req, res) => {
       },
       include: { caixa: true, user: true, receipt: true }
     });
-    console.log('✅ Transação criada:', transaction.id);
-    
-    // Gera recibo para entrada ou saída
-    console.log('📋 Criando recibo...');
-    const receipt = await prisma.receipt.create({
-      data: {
-        name: transaction.person || '',
-        type: transaction.type,
-        amount: transaction.amount,
-        date: transaction.date,
-        notes: transaction.description || '',
-        userId: transaction.userId,
-        transactionId: transaction.id
-      }
-    });
-    console.log('✅ Recibo criado:', receipt.id);
-    
     res.json(transaction);
   } catch (err) {
     console.error('Erro ao criar transação:', err, req.body);
@@ -334,25 +320,8 @@ const PORT = process.env.PORT || 3001;
 async function startServer() {
   try {
     console.log('🔗 Conectando ao banco de dados...');
-    console.log('📍 DATABASE_URL:', process.env.DATABASE_URL ? 'Configurada' : 'NÃO CONFIGURADA');
-    
     await prisma.$connect();
     console.log('✅ Conexão com banco estabelecida');
-    
-    // Testa se o banco está funcionando
-    try {
-      const userCount = await prisma.user.count();
-      console.log(`👥 Usuários no banco: ${userCount}`);
-      
-      // Se não há usuários, executa o seed
-      if (userCount === 0) {
-        console.log('🌱 Banco vazio, executando seed...');
-        const { execSync } = require('child_process');
-        execSync('npm run seed', { stdio: 'inherit' });
-      }
-    } catch (seedError) {
-      console.log('⚠️ Erro ao verificar/popular banco:', seedError.message);
-    }
     
     app.listen(PORT, () => {
       console.log(`🌐 Backend rodando em http://localhost:${PORT}`);
