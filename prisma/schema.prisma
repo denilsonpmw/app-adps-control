@@ -21,7 +21,7 @@ model Caixa {
   id             Int           @id @default(autoincrement())
   key            String        @unique
   name           String
-  transferencias Transaction[] @relation("Transferencias")
+  transactions   Transaction[]
   transactions   Transaction[]
 }
 
@@ -33,12 +33,12 @@ model Transaction {
   person       String?
   amount       Float
   date         DateTime
-  transferToId Int?
+  // transferToId removido
   userId       Int
   createdAt    DateTime @default(now())
   receipt      Receipt?
   user         User     @relation(fields: [userId], references: [id])
-  transferTo   Caixa?   @relation("Transferencias", fields: [transferToId], references: [id])
+  // transferTo removido
   caixa        Caixa    @relation(fields: [caixaId], references: [id])
 }
 

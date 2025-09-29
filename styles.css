@@ -329,13 +329,11 @@
 }
 /* Exibir apenas Data, Descrição e Valor na tabela de relatórios em mobile */
 @media (max-width: 600px) {
-    /* Oculta Tipo (2), Caixa (3) e Transferência Para (6) */
+    /* Oculta Tipo (2) e Caixa (3) na tabela de relatórios em mobile */
     .extrato-table th:nth-child(2),
     .extrato-table td:nth-child(2), /* Tipo */
     .extrato-table th:nth-child(3),
-    .extrato-table td:nth-child(3), /* Caixa */
-    .extrato-table th:nth-child(6),
-    .extrato-table td:nth-child(6)  /* Transferência Para */
+    .extrato-table td:nth-child(3) /* Caixa */
     {
         display: none;
     }

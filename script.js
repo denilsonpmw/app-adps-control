@@ -376,7 +376,6 @@ class ChurchFinanceApp {
         const newTransactionBtn = document.getElementById('newTransactionBtn');
         if (newTransactionBtn) {
             newTransactionBtn.addEventListener('click', () => {
-
                 this.openModal('transactionModal');
             });
         } else {
@@ -453,18 +452,6 @@ class ChurchFinanceApp {
                 this.applyTheme(e.target.value);
                 this.saveTheme();
             });
-        });
-
-        // Transferência entre caixas
-        document.getElementById('transactionType').addEventListener('change', (e) => {
-            const transferGroup = document.getElementById('transferToGroup');
-            if (e.target.value === 'transferencia') {
-                transferGroup.style.display = 'block';
-                document.getElementById('transferToCaixa').required = true;
-            } else {
-                transferGroup.style.display = 'none';
-                document.getElementById('transferToCaixa').required = false;
-            }
         });
 
         // Fechar modais ao clicar fora
@@ -602,32 +589,22 @@ class ChurchFinanceApp {
 
     // Modais
     openModal(modalId) {
-
         const modal = document.getElementById(modalId);
         if (!modal) {
-
             return;
         }
         modal.classList.add('active');
-
         // Definir data atual nos formulários
         const today = new Date().toISOString().split('T')[0];
         if (modalId === 'transactionModal') {
-
             const input = document.getElementById('transactionDate');
             if (input) {
                 input.value = today;
-
-            } else {
-
             }
         } else if (modalId === 'receiptModal') {
             const input = document.getElementById('receiptDate');
             if (input) {
                 input.value = today;
-
-            } else {
-
             }
         }
     }
@@ -635,11 +612,9 @@ class ChurchFinanceApp {
     closeModal(modalId) {
         const modal = document.getElementById(modalId);
         modal.classList.remove('active');
-        
         // Limpar formulários
         if (modalId === 'transactionModal') {
             document.getElementById('transactionForm').reset();
-            document.getElementById('transferToGroup').style.display = 'none';
             this.editingTransactionId = null;
             // Restaura título e botão
             const title = modal.querySelector('.modal-header h3');
@@ -653,55 +628,46 @@ class ChurchFinanceApp {
 
     // Transações
     handleTransactionSubmit() {
-    const form = document.getElementById('transactionForm');
-    const formData = new FormData(form);
-    const type = formData.get('transactionType');
-    const caixa = formData.get('transactionCaixa');
-    const person = formData.get('transactionPerson');
-    const description = formData.get('transactionDescription');
-    const amount = parseFloat(formData.get('transactionAmount'));
-    let date = formData.get('transactionDate');
-    if (date) {
-        date = date + 'T03:00:00.000Z';
-    }
-    let transferTo = undefined;
-    if (type === 'transferencia') {
-        transferTo = formData.get('transferToCaixa');
-        if (!transferTo || transferTo === caixa) {
-            this.showNotification('Selecione um caixa destino diferente', 'error');
-            return;
+        const form = document.getElementById('transactionForm');
+        const formData = new FormData(form);
+        const type = formData.get('transactionType');
+        const caixa = formData.get('transactionCaixa');
+        const person = formData.get('transactionPerson');
+        const description = formData.get('transactionDescription');
+        const amount = parseFloat(formData.get('transactionAmount'));
+        let date = formData.get('transactionDate');
+        if (date) {
+            date = date + 'T03:00:00.000Z';
         }
-    }
-    const transaction = {
-        type,
-        caixa,
-        description,
-        person,
-        amount,
-        date,
-        user: this.currentUser,
-        ...(transferTo ? { transferTo } : {})
-    };
-    if (this.editingTransactionId) {
-        // Edição
-        this.updateTransaction(this.editingTransactionId, transaction);
-    } else {
-        // Nova
-        this.addTransaction(transaction);
-    }
-    this.closeModal('transactionModal');
-    // Restaura título e botão para o padrão ao fechar
-    setTimeout(() => {
-        const modal = document.getElementById('transactionModal');
-        if (modal) {
-            const title = modal.querySelector('.modal-header h3');
-            if (title) title.textContent = 'Nova Transação';
+        const transaction = {
+            type,
+            caixa,
+            description,
+            person,
+            amount,
+            date,
+            user: this.currentUser
+        };
+        if (this.editingTransactionId) {
+            // Edição
+            this.updateTransaction(this.editingTransactionId, transaction);
+        } else {
+            // Nova
+            this.addTransaction(transaction);
         }
-        const submitBtn = document.querySelector('#transactionForm .btn-primary');
-        if (submitBtn) submitBtn.textContent = 'Salvar';
-        this.editingTransactionId = null;
-    }, 300);
-}
+        this.closeModal('transactionModal');
+        // Restaura título e botão para o padrão ao fechar
+        setTimeout(() => {
+            const modal = document.getElementById('transactionModal');
+            if (modal) {
+                const title = modal.querySelector('.modal-header h3');
+                if (title) title.textContent = 'Nova Transação';
+            }
+            const submitBtn = document.querySelector('#transactionForm .btn-primary');
+            if (submitBtn) submitBtn.textContent = 'Salvar';
+            this.editingTransactionId = null;
+        }, 300);
+    }
 
     async addTransaction(transaction) {
         try {
@@ -717,30 +683,6 @@ class ChurchFinanceApp {
             this.renderDashboard();
             this.renderTransactions();
             this.showNotification('Transação registrada com sucesso!', 'success');
-
-            // Gerar recibo automaticamente
-            const receipt = {
-                name: newTransaction.person || '',
-                type: newTransaction.type,
-                amount: newTransaction.amount,
-                date: newTransaction.date,
-                notes: newTransaction.description || '',
-                user: this.currentUser,
-                transactionId: newTransaction.id
-            };
-            const receiptRes = await fetch(`${API_BASE_URL}/api/receipts`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(receipt)
-            });
-            if (receiptRes.ok) {
-                const newReceipt = await receiptRes.json();
-                this.receipts.unshift(newReceipt);
-                // Abrir página de impressão do recibo
-                setTimeout(() => {
-                    this.printReceipt(newReceipt.id);
-                }, 500);
-            }
         } catch (err) {
             this.showNotification('Erro ao registrar transação', 'error');
         }
@@ -862,19 +804,12 @@ class ChurchFinanceApp {
         let saldoAtual = 0;
         this.transactions.forEach(t => {
             const caixaKey = t.caixa && typeof t.caixa === 'object' ? t.caixa.key : t.caixa;
-            const transferToKey = t.transferTo && typeof t.transferTo === 'object' ? t.transferTo.key : t.transferTo;
             const tDate = new Date(t.date);
             // Antes do mês atual
-            if (caixaKey === key && (t.type === 'entrada' || t.type === 'saida' || t.type === 'transferencia')) {
+            if (caixaKey === key && (t.type === 'entrada' || t.type === 'saida')) {
                 if (tDate.getFullYear() < year || (tDate.getFullYear() === year && tDate.getMonth() < month)) {
                     if (t.type === 'entrada') saldoInicio += t.amount;
                     else if (t.type === 'saida') saldoInicio -= t.amount;
-                    else if (t.type === 'transferencia') saldoInicio -= t.amount;
-                }
-            }
-            if (transferToKey === key && t.type === 'transferencia') {
-                if (tDate.getFullYear() < year || (tDate.getFullYear() === year && tDate.getMonth() < month)) {
-                    saldoInicio += t.amount;
                 }
             }
         });
@@ -891,32 +826,27 @@ class ChurchFinanceApp {
     }
 
     renderDashboardChart() {
-    const container = document.getElementById('dashboardChart');
-    const legendContainer = document.getElementById('dashboardLegend');
-    if (!container) return;
-    if (!legendContainer) return;
+        const container = document.getElementById('dashboardChart');
+        const legendContainer = document.getElementById('dashboardLegend');
+        if (!container) return;
+        if (!legendContainer) return;
         if (!this.transactions || this.transactions.length === 0) {
             container.innerHTML = '<p>Nenhum dado para exibir</p>';
             legendContainer.innerHTML = '';
             legendContainer.style.display = 'none';
             return;
         }
-
-        // Calcular saldo real de cada caixa (entradas - saídas ± transferências)
+        // Calcular saldo real de cada caixa (entradas - saídas)
         const caixaSaldos = {};
         Object.keys(CAIXAS).forEach(caixa => {
             caixaSaldos[caixa] = 0;
         });
         this.transactions.forEach(transaction => {
             const caixaKey = transaction.caixa && typeof transaction.caixa === 'object' ? transaction.caixa.key : transaction.caixa;
-            const transferToKey = transaction.transferTo && typeof transaction.transferTo === 'object' ? transaction.transferTo.key : transaction.transferTo;
             if (transaction.type === 'entrada') {
                 if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] += transaction.amount;
             } else if (transaction.type === 'saida') {
                 if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] -= transaction.amount;
-            } else if (transaction.type === 'transferencia') {
-                if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] -= transaction.amount;
-                if (transferToKey && caixaSaldos.hasOwnProperty(transferToKey)) caixaSaldos[transferToKey] += transaction.amount;
             }
         });
 
@@ -1150,48 +1080,33 @@ class ChurchFinanceApp {
 
     // Preenche o formulário de transação para edição
     populateTransactionForm(transaction) {
-
-    document.getElementById('transactionType').value = transaction.type || '';
-    document.getElementById('transactionCaixa').value = transaction.caixa?.key || transaction.caixaId || '';
-    document.getElementById('transactionAmount').value = transaction.amount || '';
-    document.getElementById('transactionDate').value = transaction.date ? new Date(transaction.date).toISOString().split('T')[0] : '';
-    document.getElementById('transactionDescription').value = transaction.description || '';
-    document.getElementById('transactionPerson').value = transaction.person || '';
-    // Transferência
-    if (transaction.type === 'transferencia') {
-        document.getElementById('transferToGroup').style.display = 'block';
-        document.getElementById('transferToCaixa').required = true;
-        document.getElementById('transferToCaixa').value = transaction.transferTo?.key || transaction.transferToId || '';
-    } else {
-        document.getElementById('transferToGroup').style.display = 'none';
-        document.getElementById('transferToCaixa').required = false;
-        document.getElementById('transferToCaixa').value = '';
-    }
-    // Salva id para update
-    this.editingTransactionId = transaction.id;
-    // Altera título e botão
-    const modal = document.getElementById('transactionModal');
-    if (modal) {
-        const title = modal.querySelector('.modal-header h3');
-        if (title) title.textContent = 'Alterar Transação';
-    }
-    const submitBtn = document.querySelector('#transactionForm .btn-primary');
-    if (submitBtn) submitBtn.textContent = 'Atualizar';
+        document.getElementById('transactionType').value = transaction.type || '';
+        document.getElementById('transactionCaixa').value = transaction.caixa?.key || transaction.caixaId || '';
+        document.getElementById('transactionAmount').value = transaction.amount || '';
+        document.getElementById('transactionDate').value = transaction.date ? new Date(transaction.date).toISOString().split('T')[0] : '';
+        document.getElementById('transactionDescription').value = transaction.description || '';
+        document.getElementById('transactionPerson').value = transaction.person || '';
+        // Salva id para update
+        this.editingTransactionId = transaction.id;
+        // Altera título e botão
+        const modal = document.getElementById('transactionModal');
+        if (modal) {
+            const title = modal.querySelector('.modal-header h3');
+            if (title) title.textContent = 'Alterar Transação';
+        }
+        const submitBtn = document.querySelector('#transactionForm .btn-primary');
+        if (submitBtn) submitBtn.textContent = 'Atualizar';
 }
 
     createTransactionHTML(transaction) {
         const typeIcon = {
             entrada: 'fas fa-arrow-down',
-            saida: 'fas fa-arrow-up',
-            transferencia: 'fas fa-exchange-alt'
+            saida: 'fas fa-arrow-up'
         };
-
         const typeLabel = {
             entrada: 'Entrada',
-            saida: 'Saída',
-            transferencia: 'Transferência'
+            saida: 'Saída'
         };
-
         const amountClass = transaction.type === 'entrada' ? 'positive' : 'negative';
         const amountPrefix = transaction.type === 'entrada' ? '+' : '-';
 
@@ -1201,18 +1116,6 @@ class ChurchFinanceApp {
             caixaNome = transaction.caixa.name || CAIXAS[transaction.caixa.key] || CAIXAS[transaction.caixa.id] || '';
         } else {
             caixaNome = CAIXAS[transaction.caixa] || '';
-        }
-        let transferNome = '';
-        if (transaction.type === 'transferencia' && transaction.transferTo) {
-            if (typeof transaction.transferTo === 'object') {
-                transferNome = transaction.transferTo.name || CAIXAS[transaction.transferTo.key] || CAIXAS[transaction.transferTo.id] || '';
-            } else {
-                transferNome = CAIXAS[transaction.transferTo] || '';
-            }
-        }
-        let transferInfo = '';
-        if (transaction.type === 'transferencia' && transaction.transferTo) {
-            transferInfo = `<div class="transaction-transfer">→ ${transferNome}</div>`;
         }
 
         return `
@@ -1230,7 +1133,6 @@ class ChurchFinanceApp {
                     <span class="transaction-caixa">${caixaNome}</span>
                     <span>${this.formatDate(transaction.date)}</span>
                 </div>
-                ${transferInfo}
             </div>
         `;
     }
@@ -1597,16 +1499,13 @@ printReportsTable() {
     exportToCSV() {
         const period = document.getElementById('reportPeriod').value;
         let startDate, endDate;
-
         if (period === 'personalizado') {
             const reportDateStart = document.getElementById('reportDateStart').value;
             const reportDateEnd = document.getElementById('reportDateEnd').value;
-            
             if (!reportDateStart || !reportDateEnd) {
                 this.showNotification('Selecione as datas para exportar', 'error');
                 return;
             }
-            
             startDate = new Date(reportDateStart + 'T00:00:00');
             endDate = new Date(reportDateEnd + 'T23:59:59');
         } else {
@@ -1615,11 +1514,8 @@ printReportsTable() {
             startDate = new Date();
             startDate.setDate(startDate.getDate() - periodDays);
         }
-
-
-        // Corrige datas e nomes de caixa/transferência para exportação
+        // Corrige datas e nomes de caixa para exportação
         const filteredTransactions = this.transactions.filter(transaction => {
-            // Garante que a data seja sempre válida para comparação
             let tDate = transaction.date;
             if (typeof tDate === 'string' && tDate.length === 10) {
                 tDate = tDate + 'T00:00:00';
@@ -1627,47 +1523,31 @@ printReportsTable() {
             const transactionDate = new Date(tDate);
             return transactionDate >= startDate && transactionDate <= endDate;
         });
-
         if (filteredTransactions.length === 0) {
             this.showNotification('Nenhum dado para exportar no período selecionado', 'error');
             return;
         }
-
-
-        const headers = ['Data', 'Tipo', 'Caixa', 'Descrição', 'Valor', 'Transferência Para'];
+        const headers = ['Data', 'Tipo', 'Caixa', 'Descrição', 'Valor'];
         const csvContent = [
             headers.join(','),
             ...filteredTransactions.map(transaction => {
-                // Nome do caixa
                 let caixaNome = '';
                 if (transaction.caixa && typeof transaction.caixa === 'object') {
                     caixaNome = transaction.caixa.name || CAIXAS[transaction.caixa.key] || CAIXAS[transaction.caixa.id] || '';
                 } else {
                     caixaNome = CAIXAS[transaction.caixa] || '';
                 }
-                // Nome do caixa de transferência
-                let transferNome = '';
-                if (transaction.type === 'transferencia' && transaction.transferTo) {
-                    if (typeof transaction.transferTo === 'object') {
-                        transferNome = transaction.transferTo.name || CAIXAS[transaction.transferTo.key] || CAIXAS[transaction.transferTo.id] || '';
-                    } else {
-                        transferNome = CAIXAS[transaction.transferTo] || '';
-                    }
-                }
                 return [
                     transaction.date,
                     transaction.type,
                     caixaNome,
                     `"${transaction.description}"`,
-                    transaction.amount,
-                    transferNome
+                    transaction.amount
                 ].join(',');
             })
         ].join('\n');
-
-    // Adiciona BOM para garantir acentuação correta em Excel e outros programas
-    const bom = '\uFEFF';
-    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const bom = '\uFEFF';
+        const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
@@ -1676,7 +1556,6 @@ printReportsTable() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
         this.showNotification('Relatório exportado com sucesso!', 'success');
     }
 
@@ -2535,7 +2414,7 @@ printReportsTable() {
                             }
                         }
 
-                        // espera imagens e fontes carregarem e só habilita o botão de impressão
+                        // espera imagens e fontes carregarem e só habilita o botão
                         Promise.all([waitImagesLoaded(), waitFontsLoaded()]).then(function(){
                             setTimeout(function(){
                                 var btn = document.querySelector('.footer-print-btn');
