@@ -188,7 +188,7 @@ app.post('/api/transactions', async (req, res) => {
       }
       userId = user.id;
     }
-    // Converter caixa e transferTo para IDs se vierem como string
+    // Converter caixa para ID se vier como string
     let caixaId = data.caixaId;
     if (!caixaId && data.caixa) {
       const caixa = await prisma.caixa.findUnique({ where: { key: data.caixa } });
@@ -197,11 +197,6 @@ app.post('/api/transactions', async (req, res) => {
         return res.status(400).json({ error: 'Caixa não encontrado' });
       }
       caixaId = caixa.id;
-    }
-    let transferToId = data.transferToId;
-    if (!transferToId && data.transferTo) {
-      const caixa = await prisma.caixa.findUnique({ where: { key: data.transferTo } });
-      transferToId = caixa ? caixa.id : null;
     }
     // Converter data para Date
     const date = data.date ? new Date(data.date) : new Date();
@@ -214,6 +209,7 @@ app.post('/api/transactions', async (req, res) => {
     if (data.type !== 'entrada' && data.type !== 'saida') {
       return res.status(400).json({ error: 'Tipo de transação inválido. Use apenas "entrada" ou "saida".' });
     }
+    // Cria a transação no banco
     const transaction = await prisma.transaction.create({
       data: {
         type: data.type,
@@ -225,6 +221,18 @@ app.post('/api/transactions', async (req, res) => {
         userId,
       },
       include: { caixa: true, user: true, receipt: true }
+    });
+    // Gera recibo para entrada ou saída
+    await prisma.receipt.create({
+      data: {
+        name: transaction.person || '',
+        type: transaction.type,
+        amount: transaction.amount,
+        date: transaction.date,
+        notes: transaction.description || '',
+        userId: transaction.userId,
+        transactionId: transaction.id
+      }
     });
     res.json(transaction);
   } catch (err) {
