@@ -210,6 +210,7 @@ app.post('/api/transactions', async (req, res) => {
       return res.status(400).json({ error: 'Tipo de transação inválido. Use apenas "entrada" ou "saida".' });
     }
     // Cria a transação no banco
+    console.log('💾 Criando transação no banco...');
     const transaction = await prisma.transaction.create({
       data: {
         type: data.type,
@@ -222,8 +223,11 @@ app.post('/api/transactions', async (req, res) => {
       },
       include: { caixa: true, user: true, receipt: true }
     });
+    console.log('✅ Transação criada:', transaction.id);
+    
     // Gera recibo para entrada ou saída
-    await prisma.receipt.create({
+    console.log('📋 Criando recibo...');
+    const receipt = await prisma.receipt.create({
       data: {
         name: transaction.person || '',
         type: transaction.type,
@@ -234,6 +238,8 @@ app.post('/api/transactions', async (req, res) => {
         transactionId: transaction.id
       }
     });
+    console.log('✅ Recibo criado:', receipt.id);
+    
     res.json(transaction);
   } catch (err) {
     console.error('Erro ao criar transação:', err, req.body);
@@ -328,8 +334,14 @@ const PORT = process.env.PORT || 3001;
 async function startServer() {
   try {
     console.log('🔗 Conectando ao banco de dados...');
+    console.log('📍 DATABASE_URL:', process.env.DATABASE_URL ? 'Configurada' : 'NÃO CONFIGURADA');
+    
     await prisma.$connect();
     console.log('✅ Conexão com banco estabelecida');
+    
+    // Testa se o banco está funcionando
+    const userCount = await prisma.user.count();
+    console.log(`👥 Usuários no banco: ${userCount}`);
     
     app.listen(PORT, () => {
       console.log(`🌐 Backend rodando em http://localhost:${PORT}`);
