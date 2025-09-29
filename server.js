@@ -119,7 +119,7 @@ app.put('/api/transactions/:id', async (req, res) => {
       }
       userId = user.id;
     }
-    // Converter caixa e transferTo para IDs se vierem como string
+    // Converter caixa para ID se vier como string
     let caixaId = data.caixaId;
     if (!caixaId && data.caixa) {
       const caixa = await prisma.caixa.findUnique({ where: { key: data.caixa } });
@@ -127,11 +127,6 @@ app.put('/api/transactions/:id', async (req, res) => {
         return res.status(400).json({ error: 'Caixa não encontrado' });
       }
       caixaId = caixa.id;
-    }
-    let transferToId = data.transferToId;
-    if (!transferToId && data.transferTo) {
-      const caixa = await prisma.caixa.findUnique({ where: { key: data.transferTo } });
-      transferToId = caixa ? caixa.id : null;
     }
     // Converter data para Date
     const date = data.date ? new Date(data.date) : new Date();
@@ -148,10 +143,9 @@ app.put('/api/transactions/:id', async (req, res) => {
         person: data.person || '',
         amount: data.amount,
         date,
-        transferToId,
         userId,
       },
-      include: { caixa: true, user: true, transferTo: true, receipt: true }
+      include: { caixa: true, user: true, receipt: true }
     });
     res.json(updated);
   } catch (err) {
@@ -162,14 +156,14 @@ app.put('/api/transactions/:id', async (req, res) => {
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
   const transaction = await prisma.transaction.findUnique({
     where: { id },
-    include: { caixa: true, user: true, transferTo: true, receipt: true }
+    include: { caixa: true, user: true, receipt: true }
   });
   if (!transaction) return res.status(404).json({ error: 'Transação não encontrada' });
   res.json(transaction);
 });
 app.get('/api/transactions', async (req, res) => {
   const transactions = await prisma.transaction.findMany({
-    include: { caixa: true, user: true, transferTo: true, receipt: true },
+    include: { caixa: true, user: true, receipt: true },
     orderBy: { date: 'desc' }
   });
   res.json(transactions);
@@ -188,7 +182,7 @@ app.post('/api/transactions', async (req, res) => {
       }
       userId = user.id;
     }
-    // Converter caixa e transferTo para IDs se vierem como string
+    // Converter caixa para ID se vier como string
     let caixaId = data.caixaId;
     if (!caixaId && data.caixa) {
       const caixa = await prisma.caixa.findUnique({ where: { key: data.caixa } });
@@ -197,11 +191,6 @@ app.post('/api/transactions', async (req, res) => {
         return res.status(400).json({ error: 'Caixa não encontrado' });
       }
       caixaId = caixa.id;
-    }
-    let transferToId = data.transferToId;
-    if (!transferToId && data.transferTo) {
-      const caixa = await prisma.caixa.findUnique({ where: { key: data.transferTo } });
-      transferToId = caixa ? caixa.id : null;
     }
     // Converter data para Date
     const date = data.date ? new Date(data.date) : new Date();

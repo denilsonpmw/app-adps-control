@@ -18,28 +18,25 @@ model User {
 }
 
 model Caixa {
-  id             Int           @id @default(autoincrement())
-  key            String        @unique
-  name           String
-  transferencias Transaction[] @relation("Transferencias")
-  transactions   Transaction[]
+  id           Int           @id @default(autoincrement())
+  key          String        @unique
+  name         String
+  transactions Transaction[]
 }
 
 model Transaction {
-  id           Int      @id @default(autoincrement())
-  type         String
-  caixaId      Int
-  description  String?
-  person       String?
-  amount       Float
-  date         DateTime
-  transferToId Int?
-  userId       Int
-  createdAt    DateTime @default(now())
-  receipt      Receipt?
-  user         User     @relation(fields: [userId], references: [id])
-  transferTo   Caixa?   @relation("Transferencias", fields: [transferToId], references: [id])
-  caixa        Caixa    @relation(fields: [caixaId], references: [id])
+  id          Int      @id @default(autoincrement())
+  type        String
+  caixaId     Int
+  description String?
+  person      String?
+  amount      Float
+  date        DateTime
+  userId      Int
+  createdAt   DateTime @default(now())
+  receipt     Receipt?
+  user        User     @relation(fields: [userId], references: [id])
+  caixa       Caixa    @relation(fields: [caixaId], references: [id])
 }
 
 model Receipt {
