@@ -22,7 +22,6 @@ model Caixa {
   key            String        @unique
   name           String
   transactions   Transaction[]
-  transactions   Transaction[]
 }
 
 model Transaction {
