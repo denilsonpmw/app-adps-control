@@ -77,7 +77,6 @@ class ChurchFinanceApp {
         const labels = {
             entrada: 'Entrada',
             saida: 'Saída',
-            transferencia: 'Transferência',
             'carnê': 'Carnê de Missões',
             'oferta': 'Oferta de Culto',
             'escola': 'Oferta Escola Bíblica',
@@ -455,18 +454,6 @@ class ChurchFinanceApp {
             });
         });
 
-        // Transferência entre caixas
-        document.getElementById('transactionType').addEventListener('change', (e) => {
-            const transferGroup = document.getElementById('transferToGroup');
-            if (e.target.value === 'transferencia') {
-                transferGroup.style.display = 'block';
-                document.getElementById('transferToCaixa').required = true;
-            } else {
-                transferGroup.style.display = 'none';
-                document.getElementById('transferToCaixa').required = false;
-            }
-        });
-
         // Fechar modais ao clicar fora
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
@@ -639,7 +626,6 @@ class ChurchFinanceApp {
         // Limpar formulários
         if (modalId === 'transactionModal') {
             document.getElementById('transactionForm').reset();
-            document.getElementById('transferToGroup').style.display = 'none';
             this.editingTransactionId = null;
             // Restaura título e botão
             const title = modal.querySelector('.modal-header h3');
@@ -664,14 +650,7 @@ class ChurchFinanceApp {
     if (date) {
         date = date + 'T03:00:00.000Z';
     }
-    let transferTo = undefined;
-    if (type === 'transferencia') {
-        transferTo = formData.get('transferToCaixa');
-        if (!transferTo || transferTo === caixa) {
-            this.showNotification('Selecione um caixa destino diferente', 'error');
-            return;
-        }
-    }
+    
     const transaction = {
         type,
         caixa,
@@ -679,8 +658,7 @@ class ChurchFinanceApp {
         person,
         amount,
         date,
-        user: this.currentUser,
-        ...(transferTo ? { transferTo } : {})
+        user: this.currentUser
     };
     if (this.editingTransactionId) {
         // Edição
@@ -862,19 +840,12 @@ class ChurchFinanceApp {
         let saldoAtual = 0;
         this.transactions.forEach(t => {
             const caixaKey = t.caixa && typeof t.caixa === 'object' ? t.caixa.key : t.caixa;
-            const transferToKey = t.transferTo && typeof t.transferTo === 'object' ? t.transferTo.key : t.transferTo;
             const tDate = new Date(t.date);
             // Antes do mês atual
-            if (caixaKey === key && (t.type === 'entrada' || t.type === 'saida' || t.type === 'transferencia')) {
+            if (caixaKey === key && (t.type === 'entrada' || t.type === 'saida')) {
                 if (tDate.getFullYear() < year || (tDate.getFullYear() === year && tDate.getMonth() < month)) {
                     if (t.type === 'entrada') saldoInicio += t.amount;
                     else if (t.type === 'saida') saldoInicio -= t.amount;
-                    else if (t.type === 'transferencia') saldoInicio -= t.amount;
-                }
-            }
-            if (transferToKey === key && t.type === 'transferencia') {
-                if (tDate.getFullYear() < year || (tDate.getFullYear() === year && tDate.getMonth() < month)) {
-                    saldoInicio += t.amount;
                 }
             }
         });
@@ -902,21 +873,17 @@ class ChurchFinanceApp {
             return;
         }
 
-        // Calcular saldo real de cada caixa (entradas - saídas ± transferências)
+        // Calcular saldo real de cada caixa (entradas - saídas)
         const caixaSaldos = {};
         Object.keys(CAIXAS).forEach(caixa => {
             caixaSaldos[caixa] = 0;
         });
         this.transactions.forEach(transaction => {
             const caixaKey = transaction.caixa && typeof transaction.caixa === 'object' ? transaction.caixa.key : transaction.caixa;
-            const transferToKey = transaction.transferTo && typeof transaction.transferTo === 'object' ? transaction.transferTo.key : transaction.transferTo;
             if (transaction.type === 'entrada') {
                 if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] += transaction.amount;
             } else if (transaction.type === 'saida') {
                 if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] -= transaction.amount;
-            } else if (transaction.type === 'transferencia') {
-                if (caixaKey && caixaSaldos.hasOwnProperty(caixaKey)) caixaSaldos[caixaKey] -= transaction.amount;
-                if (transferToKey && caixaSaldos.hasOwnProperty(transferToKey)) caixaSaldos[transferToKey] += transaction.amount;
             }
         });
 
@@ -998,7 +965,6 @@ class ChurchFinanceApp {
         });
         this.transactions.forEach(transaction => {
             const caixaKey = transaction.caixa && typeof transaction.caixa === 'object' ? transaction.caixa.key : transaction.caixa;
-            const transferToKey = transaction.transferTo && typeof transaction.transferTo === 'object' ? transaction.transferTo.key : transaction.transferTo;
             if (transaction.type === 'entrada') {
                 if (caixaKey && this.balances.hasOwnProperty(caixaKey)) {
                     this.balances[caixaKey] += transaction.amount;
@@ -1006,13 +972,6 @@ class ChurchFinanceApp {
             } else if (transaction.type === 'saida') {
                 if (caixaKey && this.balances.hasOwnProperty(caixaKey)) {
                     this.balances[caixaKey] -= transaction.amount;
-                }
-            } else if (transaction.type === 'transferencia') {
-                if (caixaKey && this.balances.hasOwnProperty(caixaKey)) {
-                    this.balances[caixaKey] -= transaction.amount;
-                }
-                if (transferToKey && this.balances.hasOwnProperty(transferToKey)) {
-                    this.balances[transferToKey] += transaction.amount;
                 }
             }
         });
@@ -1157,16 +1116,7 @@ class ChurchFinanceApp {
     document.getElementById('transactionDate').value = transaction.date ? new Date(transaction.date).toISOString().split('T')[0] : '';
     document.getElementById('transactionDescription').value = transaction.description || '';
     document.getElementById('transactionPerson').value = transaction.person || '';
-    // Transferência
-    if (transaction.type === 'transferencia') {
-        document.getElementById('transferToGroup').style.display = 'block';
-        document.getElementById('transferToCaixa').required = true;
-        document.getElementById('transferToCaixa').value = transaction.transferTo?.key || transaction.transferToId || '';
-    } else {
-        document.getElementById('transferToGroup').style.display = 'none';
-        document.getElementById('transferToCaixa').required = false;
-        document.getElementById('transferToCaixa').value = '';
-    }
+    
     // Salva id para update
     this.editingTransactionId = transaction.id;
     // Altera título e botão
@@ -1182,14 +1132,12 @@ class ChurchFinanceApp {
     createTransactionHTML(transaction) {
         const typeIcon = {
             entrada: 'fas fa-arrow-down',
-            saida: 'fas fa-arrow-up',
-            transferencia: 'fas fa-exchange-alt'
+            saida: 'fas fa-arrow-up'
         };
 
         const typeLabel = {
             entrada: 'Entrada',
-            saida: 'Saída',
-            transferencia: 'Transferência'
+            saida: 'Saída'
         };
 
         const amountClass = transaction.type === 'entrada' ? 'positive' : 'negative';
@@ -1201,18 +1149,6 @@ class ChurchFinanceApp {
             caixaNome = transaction.caixa.name || CAIXAS[transaction.caixa.key] || CAIXAS[transaction.caixa.id] || '';
         } else {
             caixaNome = CAIXAS[transaction.caixa] || '';
-        }
-        let transferNome = '';
-        if (transaction.type === 'transferencia' && transaction.transferTo) {
-            if (typeof transaction.transferTo === 'object') {
-                transferNome = transaction.transferTo.name || CAIXAS[transaction.transferTo.key] || CAIXAS[transaction.transferTo.id] || '';
-            } else {
-                transferNome = CAIXAS[transaction.transferTo] || '';
-            }
-        }
-        let transferInfo = '';
-        if (transaction.type === 'transferencia' && transaction.transferTo) {
-            transferInfo = `<div class="transaction-transfer">→ ${transferNome}</div>`;
         }
 
         return `
@@ -1230,7 +1166,6 @@ class ChurchFinanceApp {
                     <span class="transaction-caixa">${caixaNome}</span>
                     <span>${this.formatDate(transaction.date)}</span>
                 </div>
-                ${transferInfo}
             </div>
         `;
     }
@@ -1361,7 +1296,6 @@ class ChurchFinanceApp {
             '<th>Ofertante</th>' +
             '<th>Descrição</th>' +
             '<th>Valor</th>' +
-            '<th>Transferência Para</th>' +
             '</tr></thead><tbody>';
         for (var i = 0; i < transactions.length; i++) {
             var t = transactions[i];
@@ -1371,14 +1305,6 @@ class ChurchFinanceApp {
             } else {
                 caixaNome = CAIXAS[t.caixa] || '';
             }
-            var transferNome = '';
-            if (t.type === 'transferencia' && t.transferTo) {
-                if (typeof t.transferTo === 'object') {
-                    transferNome = t.transferTo.name || CAIXAS[t.transferTo.key] || CAIXAS[t.transferTo.id] || '';
-                } else {
-                    transferNome = CAIXAS[t.transferTo] || '';
-                }
-            }
             tableHtml += '<tr>';
             tableHtml += '<td>' + this.formatDate(t.date) + '</td>';
             tableHtml += '<td>' + (t.type.charAt(0).toUpperCase() + t.type.slice(1)) + '</td>';
@@ -1386,7 +1312,6 @@ class ChurchFinanceApp {
             tableHtml += '<td>' + (t.person || '-') + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
             tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
-            tableHtml += '<td>' + (transferNome || '-') + '</td>';
             tableHtml += '</tr>';
         }
         tableHtml += '</tbody></table></div>';
@@ -1617,7 +1542,7 @@ printReportsTable() {
         }
 
 
-        // Corrige datas e nomes de caixa/transferência para exportação
+        // Corrige datas e nomes de caixa para exportação
         const filteredTransactions = this.transactions.filter(transaction => {
             // Garante que a data seja sempre válida para comparação
             let tDate = transaction.date;
@@ -1634,7 +1559,7 @@ printReportsTable() {
         }
 
 
-        const headers = ['Data', 'Tipo', 'Caixa', 'Descrição', 'Valor', 'Transferência Para'];
+        const headers = ['Data', 'Tipo', 'Caixa', 'Descrição', 'Valor'];
         const csvContent = [
             headers.join(','),
             ...filteredTransactions.map(transaction => {
@@ -1645,22 +1570,13 @@ printReportsTable() {
                 } else {
                     caixaNome = CAIXAS[transaction.caixa] || '';
                 }
-                // Nome do caixa de transferência
-                let transferNome = '';
-                if (transaction.type === 'transferencia' && transaction.transferTo) {
-                    if (typeof transaction.transferTo === 'object') {
-                        transferNome = transaction.transferTo.name || CAIXAS[transaction.transferTo.key] || CAIXAS[transaction.transferTo.id] || '';
-                    } else {
-                        transferNome = CAIXAS[transaction.transferTo] || '';
-                    }
-                }
+                
                 return [
                     transaction.date,
                     transaction.type,
                     caixaNome,
                     `"${transaction.description}"`,
-                    transaction.amount,
-                    transferNome
+                    transaction.amount
                 ].join(',');
             })
         ].join('\n');
@@ -1807,8 +1723,7 @@ printReportsTable() {
         const selects = [
             document.getElementById('reportCaixa'),
             document.getElementById('filterCaixa'),
-            document.getElementById('transactionCaixa'),
-            document.getElementById('transferToCaixa')
+            document.getElementById('transactionCaixa')
         ].filter(Boolean);
         selects.forEach(select => {
             const current = select.value;
