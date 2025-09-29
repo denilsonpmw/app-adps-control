@@ -222,6 +222,43 @@ app.post('/api/transactions', async (req, res) => {
   }
 });
 
+// Excluir transação
+app.delete('/api/transactions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    // Verificar se a transação existe
+    const transaction = await prisma.transaction.findUnique({
+      where: { id },
+      include: { receipt: true }
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transação não encontrada' });
+    }
+
+    // Se há recibo associado, excluir primeiro
+    if (transaction.receipt) {
+      await prisma.receipt.delete({
+        where: { id: transaction.receipt.id }
+      });
+    }
+
+    // Excluir a transação
+    await prisma.transaction.delete({
+      where: { id }
+    });
+
+    res.json({ success: true, message: 'Transação excluída com sucesso' });
+  } catch (err) {
+    console.error('Erro ao excluir transação:', err);
+    res.status(500).json({ error: 'Erro interno do servidor ao excluir transação' });
+  }
+});
+
 // Recibos
 app.get('/api/receipts', async (req, res) => {
   const receipts = await prisma.receipt.findMany({
