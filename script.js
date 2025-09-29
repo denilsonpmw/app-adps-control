@@ -1207,6 +1207,7 @@ class ChurchFinanceApp {
             '<th>Data</th>' +
             '<th>Tipo</th>' +
             '<th>Caixa</th>' +
+            '<th>Ofertante</th>' +
             '<th>Descrição</th>' +
             '<th>Valor</th>' +
             '</tr></thead><tbody>';
@@ -1222,6 +1223,7 @@ class ChurchFinanceApp {
             tableHtml += '<td>' + this.formatDate(t.date) + '</td>';
             tableHtml += '<td>' + (t.type.charAt(0).toUpperCase() + t.type.slice(1)) + '</td>';
             tableHtml += '<td>' + caixaNome + '</td>';
+            tableHtml += '<td>' + (t.person || '-') + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
             tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
             tableHtml += '</tr>';
