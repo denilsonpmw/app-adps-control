@@ -1,0 +1,6 @@
+🚀 Iniciando servidor...
+📦 Prisma e Express inicializados
+🔗 Conectando ao banco de dados...
+✅ Conexão com banco estabelecida
+🌐 Backend rodando em http://localhost:3001
+🔑 Usuários disponíveis: admin/admin123, tesoureiro/tesoureiro123, secretario/secretario123

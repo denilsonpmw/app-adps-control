@@ -1,11 +1,22 @@
+// Captura erros globais para facilitar diagnóstico
+process.on('uncaughtException', err => {
+  console.error('Erro não tratado:', err);
+});
+process.on('unhandledRejection', err => {
+  console.error('Promise rejeitada não tratada:', err);
+});
 
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
+console.log('🚀 Iniciando servidor...');
+
 const prisma = new PrismaClient();
 const app = express();
+
+console.log('📦 Prisma e Express inicializados');
 app.use(cors());
 app.use(express.json());
 // Servir arquivos estáticos do frontend (index.html, script.js, etc)
@@ -199,6 +210,10 @@ app.post('/api/transactions', async (req, res) => {
       console.error('Campos obrigatórios ausentes:', { type: data.type, caixaId, userId, amount: data.amount, date });
       return res.status(400).json({ error: 'Campos obrigatórios ausentes ou inválidos.' });
     }
+    // Permitir apenas entrada e saída
+    if (data.type !== 'entrada' && data.type !== 'saida') {
+      return res.status(400).json({ error: 'Tipo de transação inválido. Use apenas "entrada" ou "saida".' });
+    }
     const transaction = await prisma.transaction.create({
       data: {
         type: data.type,
@@ -207,10 +222,9 @@ app.post('/api/transactions', async (req, res) => {
         person: data.person || '',
         amount: data.amount,
         date,
-        transferToId,
         userId,
       },
-      include: { caixa: true, user: true, transferTo: true, receipt: true }
+      include: { caixa: true, user: true, receipt: true }
     });
     res.json(transaction);
   } catch (err) {
@@ -302,6 +316,21 @@ app.put('/api/church', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Backend rodando em http://localhost:${PORT}`);
-});
+
+async function startServer() {
+  try {
+    console.log('🔗 Conectando ao banco de dados...');
+    await prisma.$connect();
+    console.log('✅ Conexão com banco estabelecida');
+    
+    app.listen(PORT, () => {
+      console.log(`🌐 Backend rodando em http://localhost:${PORT}`);
+      console.log('🔑 Usuários disponíveis: admin/admin123, tesoureiro/tesoureiro123, secretario/secretario123');
+    });
+  } catch (error) {
+    console.error('❌ Erro ao iniciar servidor:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

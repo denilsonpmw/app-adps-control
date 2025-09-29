@@ -3,11 +3,13 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Usuários
+  const bcrypt = require('bcryptjs');
+  await prisma.user.deleteMany();
   const admin = await prisma.user.create({
     data: {
       username: 'admin',
       name: 'Administrador',
-      passwordHash: 'senha_hash_admin',
+      passwordHash: bcrypt.hashSync('admin123', 10),
       role: 'admin',
     },
   });
@@ -15,7 +17,7 @@ async function main() {
     data: {
       username: 'tesoureiro',
       name: 'Tesoureiro',
-      passwordHash: 'senha_hash_tesoureiro',
+      passwordHash: bcrypt.hashSync('tesoureiro123', 10),
       role: 'tesoureiro',
     },
   });
@@ -23,16 +25,23 @@ async function main() {
     data: {
       username: 'secretario',
       name: 'Secretário',
-      passwordHash: 'senha_hash_secretario',
+      passwordHash: bcrypt.hashSync('secretario123', 10),
       role: 'secretario',
+    },
+  });
+  const denilson = await prisma.user.create({
+    data: {
+      username: 'denilson',
+      name: 'Denilson',
+      passwordHash: '$2b$10$Nrn4JRLaSO2Rk9MPDdls3eEJRYkmiHzJhuxy0ZRNFovO4eJlf7yZC',
+      role: 'admin',
     },
   });
 
   // Caixas
-  const escola = await prisma.caixa.create({ data: { key: 'escola', name: 'Escola Bíblica' } });
-  const missoes = await prisma.caixa.create({ data: { key: 'missoes', name: 'Missões' } });
-  const campo = await prisma.caixa.create({ data: { key: 'campo', name: 'Missões do Campo' } });
-  const geral = await prisma.caixa.create({ data: { key: 'geral', name: 'Geral' } });
+  const escolabiblica = await prisma.caixa.create({ data: { key: 'escolabiblica', name: 'Escola Bíblica' } });
+  const missoessede = await prisma.caixa.create({ data: { key: 'missoessede', name: 'Missões Sede' } });
+  const missoescampo = await prisma.caixa.create({ data: { key: 'missoescampo', name: 'Missões Campo' } });
 
   // Dados da igreja
   await prisma.churchData.create({
@@ -50,7 +59,7 @@ async function main() {
   const t1 = await prisma.transaction.create({
     data: {
       type: 'entrada',
-      caixaId: escola.id,
+      caixaId: escolabiblica.id,
       description: 'Oferta Escola Bíblica',
       amount: 150.00,
       date: new Date('2025-08-15'),
@@ -60,7 +69,7 @@ async function main() {
   const t2 = await prisma.transaction.create({
     data: {
       type: 'entrada',
-      caixaId: missoes.id,
+      caixaId: missoessede.id,
       description: 'Carnê de Missões - João Silva',
       amount: 50.00,
       date: new Date('2025-08-14'),
@@ -70,7 +79,7 @@ async function main() {
   const t3 = await prisma.transaction.create({
     data: {
       type: 'saida',
-      caixaId: geral.id,
+      caixaId: escolabiblica.id,
       description: 'Material de expediente',
       amount: 25.50,
       date: new Date('2025-08-13'),
@@ -80,7 +89,7 @@ async function main() {
   const t4 = await prisma.transaction.create({
     data: {
       type: 'entrada',
-      caixaId: geral.id,
+      caixaId: missoessede.id,
       description: 'Oferta de Culto',
       amount: 320.00,
       date: new Date('2025-08-12'),
@@ -90,7 +99,7 @@ async function main() {
   const t5 = await prisma.transaction.create({
     data: {
       type: 'entrada',
-      caixaId: campo.id,
+      caixaId: missoescampo.id,
       description: 'Doação para Missões do Campo',
       amount: 200.00,
       date: new Date('2025-08-11'),
@@ -100,11 +109,11 @@ async function main() {
   const t6 = await prisma.transaction.create({
     data: {
       type: 'transferencia',
-      caixaId: geral.id,
+      caixaId: missoessede.id,
       description: 'Transferência para Escola Bíblica',
       amount: 100.00,
       date: new Date('2025-08-10'),
-      transferToId: escola.id,
+      transferToId: escolabiblica.id,
       userId: admin.id,
     },
   });
@@ -117,7 +126,7 @@ async function main() {
       amount: 50.00,
       date: new Date('2025-08-14'),
       notes: 'Carnê de Missões - Janeiro 2025',
-      userId: tesoureiro.id,
+      userId: denilson.id,
       transactionId: t2.id,
     },
   });
@@ -128,7 +137,7 @@ async function main() {
       amount: 150.00,
       date: new Date('2025-08-15'),
       notes: 'Oferta Escola Bíblica',
-      userId: admin.id,
+      userId: denilson.id,
       transactionId: t1.id,
     },
   });
@@ -139,7 +148,7 @@ async function main() {
       amount: 25.50,
       date: new Date('2025-08-13'),
       notes: 'Material de expediente',
-      userId: admin.id,
+      userId: denilson.id,
       transactionId: t3.id,
     },
   });
@@ -150,7 +159,7 @@ async function main() {
       amount: 320.00,
       date: new Date('2025-08-12'),
       notes: 'Oferta de Culto',
-      userId: admin.id,
+      userId: denilson.id,
       transactionId: t4.id,
     },
   });
@@ -161,7 +170,7 @@ async function main() {
       amount: 200.00,
       date: new Date('2025-08-11'),
       notes: 'Doação para Missões do Campo',
-      userId: secretario.id,
+      userId: denilson.id,
       transactionId: t5.id,
     },
   });
@@ -172,7 +181,7 @@ async function main() {
       amount: 100.00,
       date: new Date('2025-08-10'),
       notes: 'Transferência para Escola Bíblica',
-      userId: admin.id,
+      userId: denilson.id,
       transactionId: t6.id,
     },
   });
