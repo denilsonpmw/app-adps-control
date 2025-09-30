@@ -1351,16 +1351,17 @@ printReportsTable() {
             <head>
                 <title>Relatório de Transações</title>
                 <style>
-                    body { font-family: Arial, sans-serif; margin: 30px; background: #f8fafc; }
+                    body { font-family: Arial, sans-serif; margin: 30px; background: transparent !important; color: #222; }
                     table { border-collapse: collapse; margin-bottom: 10px; box-shadow: 0 2px 8px #0001; background: #fff; width: auto; min-width: 100%; }
-                    th, td { border: 1px solid #ccc; padding: 8px 10px; font-size: 15px; white-space: nowrap; }
-                    th { background: #14532d !important; color: #fff !important; letter-spacing: 1px; font-size: 16px; }
-                    tr:nth-child(even) { background: #f1f5f9; }
+                    th, td { border: 1px solid #e5e7eb; padding: 8px 10px; font-size: 15px; white-space: nowrap; }
+                    th { background: #22c55e !important; color: #fff !important; letter-spacing: 1px; font-size: 16px; font-weight: 600; }
+                    tr:nth-child(even) { background: #f6f8fa; }
                     tr:nth-child(odd) { background: #fff; }
-                    h2 { margin-bottom: 0; }
+                    h2 { margin-bottom: 0; color: #166534; }
                     table, th, td { table-layout: auto; }
-                    .popup-print-btn { padding: 8px 14px; background: #14532d; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+                    .popup-print-btn { padding: 8px 14px; background: #22c55e; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
                     .popup-print-btn[disabled] { opacity: 0.5; cursor: default; }
+                    tfoot td { color: #166534; font-weight: bold; font-size: 16px; }
                 </style>
                 <script>
                     // Auto-scale helper for popup; no auto-printing — user clicks the print button
