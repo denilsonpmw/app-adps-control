@@ -341,6 +341,41 @@ app.put('/api/church', async (req, res) => {
   }
 });
 
+// ROTA ADMIN PARA RECRIAR RECIBOS FALTANTES
+app.post('/admin/seed-receipts-missing', async (req, res) => {
+  const token = req.query.token;
+  const TOKEN_ESPERADO = process.env.ADMIN_TOKEN || 'supersecreto';
+  if (token !== TOKEN_ESPERADO) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+  try {
+    // Busca todas as transações de entrada que não possuem recibo
+    const transactionsWithoutReceipt = await prisma.transaction.findMany({
+      where: {
+        receipt: null,
+        type: 'entrada'
+      }
+    });
+    let count = 0;
+    for (const transaction of transactionsWithoutReceipt) {
+      await prisma.receipt.create({
+        data: {
+          transactionId: transaction.id,
+          person: transaction.person || '',
+          amount: transaction.amount,
+          date: transaction.date,
+          caixa: transaction.caixa,
+          description: transaction.description || '',
+        }
+      });
+      count++;
+    }
+    res.json({ success: true, message: `Recibos criados: ${count}` });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar recibos', details: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 
 async function startServer() {
