@@ -354,23 +354,26 @@ app.post('/admin/seed-receipts-missing', async (req, res) => {
       where: {
         receipt: null,
         type: 'entrada'
-      }
+      },
+      include: { caixa: true, user: true }
     });
     let count = 0;
     for (const transaction of transactionsWithoutReceipt) {
+      // Preenche campos obrigatórios do modelo Receipt
       await prisma.receipt.create({
         data: {
           transactionId: transaction.id,
-          person: transaction.person || '',
+          name: transaction.person || transaction.caixa?.name || 'Desconhecido',
+          type: transaction.type,
           amount: transaction.amount,
           date: transaction.date,
-          caixa: transaction.caixa,
-          description: transaction.description || '',
+          notes: transaction.description || '',
+          userId: transaction.userId,
         }
       });
       count++;
     }
-    res.json({ success: true, message: `Recibos criados: ${count}` });
+    res.json({ success: true, created: count });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao criar recibos', details: err.message });
   }
