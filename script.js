@@ -1317,7 +1317,8 @@ class ChurchFinanceApp {
             tableHtml += '<td>' + caixaNome + '</td>';
             tableHtml += '<td>' + (t.person || '-') + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
-            tableHtml += '<td class="extrato-valor ' + t.type + '" style="text-align:right;">' + this.formatCurrency(t.amount) + '</td>';
+            let valorFormatado = (t.type === 'saida' ? '-' : '') + this.formatCurrency(t.amount);
+            tableHtml += '<td class="extrato-valor ' + t.type + '" style="text-align:right;">' + valorFormatado + '</td>';
             tableHtml += '</tr>';
             total += Number(t.amount) || 0;
         }
