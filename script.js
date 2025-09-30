@@ -1343,7 +1343,7 @@ printReportsTable() {
                 <div style="font-size:15px;color:#333;">${church.address || ''}</div>
                 <div style="font-size:15px;color:#333;">${church.phone || ''} ${church.email ? ' | ' + church.email : ''}</div>
                 <div style="font-size:14px;color:#555;">${church.cnpj ? 'CNPJ: ' + church.cnpj : ''}</div>
-                <div style="margin-top:10px;font-size:18px;font-weight:bold;color:#166534;">Relatório de Transações</div>
+                <div style="margin-top:10px;font-size:18px;font-weight:bold;color:#dc2626;">Relatório de Transações</div>
             </div>
         `;
         printWindow.document.write(`
@@ -1362,6 +1362,8 @@ printReportsTable() {
                     .popup-print-btn { padding: 8px 14px; background: #22c55e; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
                     .popup-print-btn[disabled] { opacity: 0.5; cursor: default; }
                     tfoot td { color: #166534; font-weight: bold; font-size: 16px; }
+                    .extrato-valor.entrada { color: #2563eb !important; font-weight: bold; }
+                    .extrato-valor.saida { color: #dc2626 !important; font-weight: bold; }
                 </style>
                 <script>
                     // Auto-scale helper for popup; no auto-printing — user clicks the print button
