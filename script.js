@@ -1286,6 +1286,12 @@ class ChurchFinanceApp {
             container.innerHTML = '<p class="no-data">Nenhuma transação encontrada para o período/caixa/tipo selecionado.</p>';
             return;
         }
+        // Ordena por data (mais antiga para mais nova)
+        transactions = transactions.slice().sort(function(a, b) {
+            return new Date(a.date) - new Date(b.date);
+        });
+
+        var total = 0;
         var tableHtml = '';
         tableHtml += '<div class="extrato-table-wrapper">';
         tableHtml += '<table class="extrato-table">';
@@ -1295,7 +1301,7 @@ class ChurchFinanceApp {
             '<th>Caixa</th>' +
             '<th>Ofertante</th>' +
             '<th>Descrição</th>' +
-            '<th>Valor</th>' +
+            '<th style="text-align:right;">Valor</th>' +
             '</tr></thead><tbody>';
         for (var i = 0; i < transactions.length; i++) {
             var t = transactions[i];
@@ -1311,10 +1317,17 @@ class ChurchFinanceApp {
             tableHtml += '<td>' + caixaNome + '</td>';
             tableHtml += '<td>' + (t.person || '-') + '</td>';
             tableHtml += '<td>' + t.description + '</td>';
-            tableHtml += '<td class="extrato-valor ' + t.type + '">' + this.formatCurrency(t.amount) + '</td>';
+            tableHtml += '<td class="extrato-valor ' + t.type + '" style="text-align:right;">' + this.formatCurrency(t.amount) + '</td>';
             tableHtml += '</tr>';
+            total += Number(t.amount) || 0;
         }
-        tableHtml += '</tbody></table></div>';
+        tableHtml += '</tbody>';
+        // Totalizador
+        tableHtml += '<tfoot><tr>' +
+            '<td colspan="5" style="text-align:right;font-weight:bold;">Total</td>' +
+            '<td style="text-align:right;font-weight:bold;">' + this.formatCurrency(total) + '</td>' +
+            '</tr></tfoot>';
+        tableHtml += '</table></div>';
         container.innerHTML = tableHtml;
     }
 
