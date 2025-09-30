@@ -1361,9 +1361,10 @@ printReportsTable() {
                     table, th, td { table-layout: auto; }
                     .popup-print-btn { padding: 8px 14px; background: #22c55e; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
                     .popup-print-btn[disabled] { opacity: 0.5; cursor: default; }
-                    tfoot td { color: #166534; font-weight: bold; font-size: 16px; }
-                    .extrato-valor.entrada { color: #2563eb !important; font-weight: bold; }
-                    .extrato-valor.saida { color: #dc2626 !important; font-weight: bold; }
+                    tfoot td { color: #1e40af !important; font-weight: 600; font-size: 16px; }
+                    tfoot tr { background: #e0e7ef !important; }
+                    .extrato-valor.entrada { color: #2563eb !important; font-weight: 500; }
+                    .extrato-valor.saida { color: #dc2626 !important; font-weight: 500; }
                 </style>
                 <script>
                     // Auto-scale helper for popup; no auto-printing — user clicks the print button
