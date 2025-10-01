@@ -1338,15 +1338,36 @@ printReportsTable() {
         const printWindow = window.open('', '_blank', 'width=900,height=700');
         // Cabeçalho com dados da igreja
         const church = this.churchData || {};
+        // Pega filtro de caixa
+        const caixaSelect = document.getElementById('reportCaixa');
+        let caixaNome = 'Todos';
+        if (caixaSelect) {
+            const caixaValue = caixaSelect.value;
+            if (caixaValue && caixaValue !== 'todos') {
+                caixaNome = caixaSelect.options[caixaSelect.selectedIndex].text;
+            }
+        }
         const headerHtml = `
             <div style="text-align:center;margin-bottom:18px;">
                 <h2 style="margin:0;color:#14532d;">${church.name || 'Nome da Igreja'}</h2>
                 <div style="font-size:15px;color:#333;">${church.address || ''}</div>
                 <div style="font-size:15px;color:#333;">${church.phone || ''} ${church.email ? ' | ' + church.email : ''}</div>
                 <div style="font-size:14px;color:#555;">${church.cnpj ? 'CNPJ: ' + church.cnpj : ''}</div>
-                <div style="margin-top:10px;font-size:18px;font-weight:bold;color:#dc2626;">Relatório de Transações</div>
+                <div style="margin-top:10px;font-size:18px;font-weight:bold;color:#dc2626;">Relatório de Transações - Caixa ${caixaNome}</div>
             </div>
         `;
+        // Remove coluna Caixa da tabela
+        let tableHtml = container.innerHTML;
+        // Remove cabeçalho da coluna Caixa
+        tableHtml = tableHtml.replace('<th>Caixa</th>', '');
+        // Remove todas as células da coluna Caixa nas linhas
+        tableHtml = tableHtml.replace(/<td>[^<]*<\/td>/g, function(match, offset, str) {
+            // Só remove se for a terceira coluna (depois de Data e Tipo)
+            // Verifica se está logo após as duas primeiras células
+            const prevCells = str.slice(0, offset).match(/<td>/g);
+            if (prevCells && prevCells.length % 6 === 2) return '';
+            return match;
+        });
         printWindow.document.write(`
             <html>
             <head>
