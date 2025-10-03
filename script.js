@@ -1291,7 +1291,7 @@ class ChurchFinanceApp {
             return new Date(a.date) - new Date(b.date);
         });
 
-        var total = 0;
+    var total = 0;
         var tableHtml = '';
         tableHtml += '<div class="extrato-table-wrapper">';
         tableHtml += '<table class="extrato-table">';
@@ -1320,7 +1320,11 @@ class ChurchFinanceApp {
             let valorFormatado = (t.type === 'saida' ? '-' : '') + this.formatCurrency(t.amount);
             tableHtml += '<td class="extrato-valor ' + t.type + '" style="text-align:right;">' + valorFormatado + '</td>';
             tableHtml += '</tr>';
-            total += Number(t.amount) || 0;
+            if (t.type === 'saida') {
+                total -= Number(t.amount) || 0;
+            } else {
+                total += Number(t.amount) || 0;
+            }
         }
         tableHtml += '</tbody>';
         // Totalizador
