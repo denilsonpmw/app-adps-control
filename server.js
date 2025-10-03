@@ -342,6 +342,23 @@ app.put('/api/church', async (req, res) => {
 });
 
 // ROTA ADMIN PARA RECRIAR RECIBOS FALTANTES
+// ROTA ADMIN PARA EXCLUIR TODOS OS RECIBOS DE SAÍDA
+app.post('/admin/delete-receipts-saida', async (req, res) => {
+  const token = req.query.token;
+  const TOKEN_ESPERADO = process.env.ADMIN_TOKEN || 'supersecreto';
+  if (token !== TOKEN_ESPERADO) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+  try {
+    // Exclui todos os recibos do tipo 'saida'
+    const deleted = await prisma.receipt.deleteMany({
+      where: { type: 'saida' }
+    });
+    res.json({ success: true, deleted: deleted.count });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir recibos de saída', details: err.message });
+  }
+});
 app.post('/admin/seed-receipts-missing', async (req, res) => {
   const token = req.query.token;
   const TOKEN_ESPERADO = process.env.ADMIN_TOKEN || 'supersecreto';
