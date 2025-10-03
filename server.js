@@ -349,21 +349,27 @@ app.post('/admin/seed-receipts-missing', async (req, res) => {
     return res.status(403).json({ error: 'Acesso negado' });
   }
   try {
-    // Busca todas as transações de entrada que não possuem recibo
+    // Busca todas as transações que não possuem recibo
     const transactionsWithoutReceipt = await prisma.transaction.findMany({
       where: {
-        receipt: null,
-        type: 'entrada'
+        receipt: null
       },
       include: { caixa: true, user: true }
     });
+    // Busca dados da igreja
+    const church = await prisma.churchData.findFirst();
     let count = 0;
     for (const transaction of transactionsWithoutReceipt) {
-      // Preenche campos obrigatórios do modelo Receipt
+      let receiptName;
+      if (transaction.type === 'saida') {
+        receiptName = church?.name || 'Igreja';
+      } else {
+        receiptName = transaction.person || transaction.caixa?.name || 'Desconhecido';
+      }
       await prisma.receipt.create({
         data: {
           transactionId: transaction.id,
-          name: transaction.person || transaction.caixa?.name || 'Desconhecido',
+          name: receiptName,
           type: transaction.type,
           amount: transaction.amount,
           date: transaction.date,
